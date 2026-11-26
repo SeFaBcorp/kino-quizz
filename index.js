@@ -5,11 +5,15 @@ import nodemailer from 'nodemailer';
 
 const E = process.env;
 const missing = ['TELEGRAM_BOT_TOKEN','WEBHOOK_SECRET','SITE_ORIGIN','OWNER_EMAILS','FIREBASE_SERVICE_ACCOUNT'].filter(k => !E[k]);
-if (missing.length) { console.error('Missing environment variables:', missing.join(', ')); process.exit(1); }
+if (missing.length) { console.error('Missing environment variables:', missing.join(', '), '\nAdd them in Render -> your service -> Environment, then redeploy.'); process.exit(1); }
 if (E.WEBHOOK_SECRET.length < 16) { console.error('WEBHOOK_SECRET must be at least 16 characters'); process.exit(1); }
 if ((E.AI_PROVIDER || '').toLowerCase() === 'openai' && E.OPENAI_API_KEY && !E.OPENAI_MODEL) { console.error('OPENAI_MODEL is required when AI_PROVIDER=openai'); process.exit(1); }
 process.on('unhandledRejection', e => console.error('unhandledRejection', e));
-admin.initializeApp({ credential: admin.credential.cert(JSON.parse(E.FIREBASE_SERVICE_ACCOUNT)) });
+let serviceAccount;
+try { serviceAccount = JSON.parse(E.FIREBASE_SERVICE_ACCOUNT.trim()); }
+catch (e) { console.error('FIREBASE_SERVICE_ACCOUNT is not valid JSON. Paste the whole service-account JSON on ONE line, without extra quotes.'); process.exit(1); }
+if (serviceAccount.private_key) serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore(), auth = admin.auth();
 const OWNERS = (E.OWNER_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const TG = `https://api.telegram.org/bot${E.TELEGRAM_BOT_TOKEN}`;

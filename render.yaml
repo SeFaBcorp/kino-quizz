@@ -2,7 +2,6 @@ services:
   - type: web
     name: kinoquiz-server
     runtime: node
-    rootDir: server
     plan: free
     buildCommand: npm install
     startCommand: npm start
@@ -12,7 +11,7 @@ services:
       - { key: WEBHOOK_SECRET,           sync: false }
       - { key: PUBLIC_URL,               sync: false }
       - { key: SITE_ORIGIN,              sync: false }
-      - { key: OWNER_EMAILS,             sync: false }
+      - { key: OWNER_EMAILS,             value: "egabehru0@gmail.com,dilshodabdurahimov12@gmail.com" }
       - { key: FIREBASE_SERVICE_ACCOUNT, sync: false }
       - { key: AI_PROVIDER,              value: anthropic }
       - { key: ANTHROPIC_API_KEY,        sync: false }
