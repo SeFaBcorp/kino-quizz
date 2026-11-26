@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: kinoquiz-server
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - { key: TELEGRAM_BOT_TOKEN,       sync: false }
+      - { key: WEBHOOK_SECRET,           sync: false }
+      - { key: PUBLIC_URL,               sync: false }
+      - { key: SITE_ORIGIN,              sync: false }
+      - { key: OWNER_EMAILS,             sync: false }
+      - { key: FIREBASE_SERVICE_ACCOUNT, sync: false }
+      - { key: AI_PROVIDER,              value: anthropic }
+      - { key: ANTHROPIC_API_KEY,        sync: false }
+      - { key: AI_MODEL,                 value: claude-sonnet-5-5 }
+      - { key: OPENAI_API_KEY,           sync: false }
+      - { key: OPENAI_MODEL,             sync: false }
+      - { key: SMTP_HOST,                sync: false }
+      - { key: SMTP_USER,                sync: false }
+      - { key: SMTP_PASS,                sync: false }
