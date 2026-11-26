@@ -5,14 +5,13 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: npm start
-    healthCheckPath: /
+    healthCheckPath: /healthz
     envVars:
       - { key: TELEGRAM_BOT_TOKEN,       sync: false }
       - { key: WEBHOOK_SECRET,           sync: false }
-      - { key: PUBLIC_URL,               sync: false }
-      - { key: SITE_ORIGIN,              sync: false }
-      - { key: OWNER_EMAILS,             value: "egabehru0@gmail.com,dilshodabdurahimov12@gmail.com" }
       - { key: FIREBASE_SERVICE_ACCOUNT, sync: false }
+      - { key: OWNER_EMAILS,             value: "egabehru0@gmail.com,dilshodabdurahimov12@gmail.com" }
+      - { key: SITE_ORIGIN,              value: "https://kino-quizz.onrender.com" }
       - { key: AI_PROVIDER,              value: anthropic }
       - { key: ANTHROPIC_API_KEY,        sync: false }
       - { key: AI_MODEL,                 value: claude-sonnet-5-5 }

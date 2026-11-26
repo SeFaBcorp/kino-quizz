@@ -2,9 +2,14 @@ import express from 'express';
 import admin from 'firebase-admin';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 const E = process.env;
-const missing = ['TELEGRAM_BOT_TOKEN','WEBHOOK_SECRET','SITE_ORIGIN','OWNER_EMAILS','FIREBASE_SERVICE_ACCOUNT'].filter(k => !E[k]);
+const missing = ['TELEGRAM_BOT_TOKEN','WEBHOOK_SECRET','OWNER_EMAILS','FIREBASE_SERVICE_ACCOUNT'].filter(k => !E[k]);
 if (missing.length) { console.error('Missing environment variables:', missing.join(', '), '\nAdd them in Render -> your service -> Environment, then redeploy.'); process.exit(1); }
 if (E.WEBHOOK_SECRET.length < 16) { console.error('WEBHOOK_SECRET must be at least 16 characters'); process.exit(1); }
 if ((E.AI_PROVIDER || '').toLowerCase() === 'openai' && E.OPENAI_API_KEY && !E.OPENAI_MODEL) { console.error('OPENAI_MODEL is required when AI_PROVIDER=openai'); process.exit(1); }
@@ -13,7 +18,8 @@ let serviceAccount;
 try { serviceAccount = JSON.parse(E.FIREBASE_SERVICE_ACCOUNT.trim()); }
 catch (e) { console.error('FIREBASE_SERVICE_ACCOUNT is not valid JSON. Paste the whole service-account JSON on ONE line, without extra quotes.'); process.exit(1); }
 if (serviceAccount.private_key) serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+const PUBLIC = (E.PUBLIC_URL || E.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');   // Render sets RENDER_EXTERNAL_URL by itself
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount), storageBucket: serviceAccount.project_id + '.firebasestorage.app' });
 const db = admin.firestore(), auth = admin.auth();
 const OWNERS = (E.OWNER_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const TG = `https://api.telegram.org/bot${E.TELEGRAM_BOT_TOKEN}`;
@@ -33,10 +39,15 @@ async function adminChats() {
 /* ---------- HTTP API ---------- */
 const app = express();
 app.use(express.json());
+const ORIGINS = [...(E.SITE_ORIGIN || '').split(','), PUBLIC, 'https://' + serviceAccount.project_id + '.web.app', 'https://' + serviceAccount.project_id + '.firebaseapp.com']
+  .map(x => x.trim().replace(/\/+$/, '')).filter(Boolean);
 app.use((req, res, next) => {
-  res.set({ 'Access-Control-Allow-Origin': E.SITE_ORIGIN || '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS' });
+  const o = req.headers.origin;
+  res.set({ 'Access-Control-Allow-Origin': o && ORIGINS.includes(o) ? o : ORIGINS[0] || '*', 'Vary': 'Origin', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS' });
   if (req.method === 'OPTIONS') return res.sendStatus(204); next();
 });
+// The website itself is served from /public, so site + server share one address (no CORS trouble).
+app.use(express.static(path.join(__dir, 'public')));
 const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(e => { console.error(e); res.status(500).json({ error: 'server error' }); });
 const needUser = async (req, res, next) => {
   try { req.user = await auth.verifyIdToken((req.headers.authorization || '').replace('Bearer ', '')); next(); }
@@ -44,7 +55,7 @@ const needUser = async (req, res, next) => {
 };
 const needOwner = (req, res, next) => req.user.role === 'owner' ? next() : res.status(403).json({ error: 'owners only' });
 
-app.get('/', (_, res) => res.send('KinoQuiz server OK'));
+app.get('/healthz', (_, res) => res.send('KinoQuiz server OK'));
 
 // Owner or co-owner adds an admin. Owners cannot be created here.
 app.post('/api/admins', needUser, needOwner, wrap(async (req, res) => {
@@ -157,7 +168,40 @@ app.post('/telegram/' + E.WEBHOOK_SECRET, async (req, res) => {
   } catch (e) { console.error(e); }
 });
 
+/* ---------- automatic setup on every start ---------- */
+async function ensureOwners() {
+  for (const email of OWNERS) {
+    try {
+      let u, created = false, usedInitial = false;
+      try { u = await auth.getUserByEmail(email); }
+      catch {
+        usedInitial = !!(E.OWNER_INITIAL_PASSWORD && E.OWNER_INITIAL_PASSWORD.length >= 8);
+        const pw = usedInitial ? E.OWNER_INITIAL_PASSWORD : crypto.randomBytes(24).toString('base64url');
+        u = await auth.createUser({ email, password: pw, emailVerified: true }); created = true;
+      }
+      if (u.customClaims?.role !== 'owner') await auth.setCustomUserClaims(u.uid, { ...(u.customClaims || {}), role: 'owner' });
+      const uname = email.split('@')[0].replace(/[^\w.-]/g, '').slice(0, 24), ref = db.doc('users/' + u.uid), snap = await ref.get();
+      if (!snap.exists || snap.data().role !== 'owner') await ref.set({ email, username: uname, role: 'owner', mustChange: created && usedInitial }, { merge: true });
+      if (!(await db.doc('usernames/' + uname.toLowerCase()).get()).exists) await db.doc('usernames/' + uname.toLowerCase()).set({ uid: u.uid });
+      console.log(created ? `owner created: ${email}` + (usedInitial ? ' (sign in with OWNER_INITIAL_PASSWORD, you must change it)' : ' -> open the site, press "Forgot password" to set your password') : `owner ok: ${email}`);
+    } catch (e) { console.error('owner setup failed for', email, '-', e.message); }
+  }
+}
+async function publishRules() {
+  if (E.DISABLE_RULES_SYNC) return;
+  try { await admin.securityRules().releaseFirestoreRulesetFromSource(fs.readFileSync(path.join(__dir, 'firestore.rules'), 'utf8')); console.log('firestore rules published'); }
+  catch (e) { console.error('firestore rules NOT published (paste firestore.rules in the Firebase console):', e.message); }
+  try { await admin.securityRules().releaseStorageRulesetFromSource(fs.readFileSync(path.join(__dir, 'storage.rules'), 'utf8')); console.log('storage rules published'); }
+  catch (e) { console.error('storage rules NOT published (paste storage.rules in the Firebase console):', e.message); }
+}
+
 app.listen(E.PORT || 3000, async () => {
   console.log('server up');
-  if (E.PUBLIC_URL) console.log('webhook:', (await tg('setWebhook', { url: `${E.PUBLIC_URL}/telegram/${E.WEBHOOK_SECRET}` })).description);
+  if (PUBLIC) {
+    console.log('webhook:', (await tg('setWebhook', { url: `${PUBLIC}/telegram/${E.WEBHOOK_SECRET}` }).catch(e => ({ description: String(e) }))).description);
+    // Free Render sleeps after 15 min without traffic; pinging ourselves keeps the bot awake.
+    setInterval(() => fetch(PUBLIC + '/healthz').catch(() => {}), 10 * 60 * 1000);
+  } else console.log('PUBLIC_URL / RENDER_EXTERNAL_URL not set: Telegram webhook not registered');
+  await ensureOwners();
+  await publishRules();
 });
