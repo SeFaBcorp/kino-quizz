@@ -1,0 +1,1564 @@
+<!doctype html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#171326"><title>KinoQuiz — Cinema Studio v9</title><meta name="description" content="Seven-round quiz collections with three private answer attempts, actor media galleries and interactive embedded media, friend lobby and store."><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+
+/* v7 media embeds: YouTube and Spotify stay inside the question card */
+.quiz-media-item.media-embed iframe{display:block;width:100%;min-height:280px;border:0;border-radius:14px;background:#100d19}
+.quiz-media-item.spotify-embed iframe{min-height:152px;height:152px}
+.one-second-player:empty{display:none}.one-second-player iframe{display:block;width:100%;height:320px;max-height:56vw;min-height:220px;border:0;border-radius:14px;background:#100d19}
+@media(max-width:600px){.quiz-media-item.media-embed iframe{min-height:220px}.one-second-player iframe{height:240px;min-height:200px}}
+</style></head><body>
+<style>
+/* Layout: fixed left sidebar of sections, top bar with search + language + account, one working view on the right. */
+:root{
+  --bg:#EEF0F4; --surface:#FFFFFF; --ink:#12151B; --muted:#586072; --line:#D8DCE4;
+  --accent:#F2A900; --on-accent:#14110A; --ok:#1B7F54; --bad:#B83232;
+  --tint:color-mix(in srgb,var(--accent) 13%,var(--surface));
+  --accent-ink:color-mix(in srgb,var(--accent) 50%,var(--ink));
+  --font-display:ui-rounded,'Arial Rounded MT Bold',system-ui,sans-serif;
+  --font-body:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E1116; --surface:#171B23; --ink:#ECEFF4; --muted:#9AA3B4; --line:#272D38; --ok:#4CC38A; --bad:#F07272; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1116; --surface:#171B23; --ink:#ECEFF4; --muted:#9AA3B4; --line:#272D38; --ok:#4CC38A; --bad:#F07272; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--font-body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent-ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font:700 clamp(24px,4.2vw,36px)/1.15 var(--font-display);letter-spacing:-.01em}
+h2{font:700 17px/1.3 var(--font-display)}
+h3{font:600 16px/1.35 var(--font-body)}
+p{margin:0}
+.muted{color:var(--muted)}
+.lbl-up{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;align-self:start;height:100vh;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;padding:18px 12px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px}
+.brand-mark{width:30px;height:30px;flex:none;border-radius:6px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center}
+.brand-text{font:700 15px var(--font-display);letter-spacing:-.01em}
+.nav{display:flex;align-items:center;gap:12px;width:100%;padding:10px;border:0;border-radius:8px;background:none;text-align:left;cursor:pointer;color:var(--muted);font-weight:500}
+.nav:hover{background:var(--bg);color:var(--ink)}
+.nav[aria-current="page"]{background:var(--tint);color:var(--ink);font-weight:600}
+.nav[aria-current="page"] svg{color:var(--accent-ink)}
+.nav svg{flex:none}
+.rail-foot{margin-top:auto;padding:10px 8px 0;font-size:12px;color:var(--muted)}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px 16px}
+.search{flex:1 1 240px;min-width:0;position:relative}
+.search input{width:100%;padding:9px 12px 9px 36px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.search svg{position:absolute;left:11px;top:50%;translate:0 -50%;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.seg button{border:0;background:none;padding:7px 11px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.who{display:flex;align-items:center;gap:10px}
+.who-name{font-weight:600;line-height:1.2}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--bg);color:var(--muted);white-space:nowrap}
+.badge.free{color:var(--ok);border-color:currentColor;background:none}
+.badge.paid{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.badge.admin{background:var(--ink);color:var(--bg);border-color:transparent}
+
+.wrap{max-width:980px;padding-block:26px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.stack{display:flex;flex-direction:column;gap:22px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.between{justify-content:space-between}
+.head{display:flex;flex-direction:column;gap:6px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:16px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;min-width:0}
+.pad{padding:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.btn.primary:hover{filter:brightness(.95)}
+.btn.sm{padding:5px 11px;font-size:13px}
+.btn.danger{color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:6px 13px;border-radius:99px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:transparent}
+
+/* Slate: the one cinema flourish */
+.hero{display:flex;flex-wrap:wrap;gap:22px;justify-content:space-between;align-items:flex-end}
+.slate{width:min(100%,250px);border:2px solid var(--ink);border-radius:6px;overflow:hidden;background:var(--surface)}
+.slate-bar{height:22px;background:repeating-linear-gradient(-55deg,var(--ink) 0 14px,var(--surface) 14px 28px);border-bottom:2px solid var(--ink)}
+.slate-body{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.slate-body div{padding:7px 10px;border-right:1px solid var(--line)}
+.slate-body div:last-child{border:0}
+.slate-body b{display:block;font:700 18px var(--font-display);font-variant-numeric:tabular-nums}
+.facts{display:flex;flex-wrap:wrap;gap:6px 28px;margin:0;padding:0}
+.facts div{display:flex;gap:8px;align-items:baseline}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums}
+
+.news-item{display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;padding:16px;border-bottom:1px solid var(--line)}
+.news-item:last-child{border:0}
+.when{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-variant-numeric:tabular-nums}
+.when span{display:block;margin-top:4px;color:var(--accent-ink)}
+.news-item h3{margin-bottom:4px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;font-size:13px;color:var(--muted);align-items:center}
+@media (max-width:560px){.news-item{grid-template-columns:1fr;gap:6px}}
+
+.film{height:14px;background:radial-gradient(circle at 50% 50%,var(--surface) 2.6px,transparent 3.2px) 0 0/14px 100% repeat-x,var(--line)}
+.qcard{overflow:hidden;display:flex;flex-direction:column}
+.qcard .pad{display:flex;flex-direction:column;gap:12px;flex:1}
+.seven{display:flex;gap:3px}
+.seven i{flex:1;height:6px;border-radius:2px;background:var(--accent)}
+.seven i:nth-child(odd){opacity:.55}
+.qcard .row{margin-top:auto}
+
+.opt{display:flex;gap:10px;width:100%;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:500}
+.opt:hover:not([disabled]){border-color:var(--accent);background:var(--tint)}
+.opt[disabled]{cursor:default}
+.opt.right{border-color:var(--ok);color:var(--ok);font-weight:700}
+.opt.wrong{border-color:var(--bad);color:var(--bad)}
+.opt .mk{margin-left:auto;font-weight:700}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+
+label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600}
+input[type=text],input[type=password],input[type=date],input[type=number],input[type=url],select,textarea{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);width:100%;font-weight:400}
+textarea{min-height:70px;resize:vertical}
+.form{display:grid;gap:12px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:12px;margin:0;display:grid;gap:10px;min-width:0}
+legend{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);padding:0 6px}
+details.card>summary{padding:14px 16px;cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font-size:20px;color:var(--muted)}
+details.card[open]>summary::after{content:"–"}
+details.card>.inner{padding:4px 16px 16px}
+.err{color:var(--bad);font-weight:600;min-height:1.2em;font-size:13px}
+.empty{padding:26px 16px;text-align:center;color:var(--muted)}
+
+.swatches{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.sw{width:36px;height:36px;border-radius:50%;border:2px solid var(--surface);outline:1px solid var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{outline:2px solid var(--ink)}
+input[type=color]{width:44px;height:36px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer}
+.preview{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(10,12,16,.55);display:grid;place-items:center;padding:16px}
+.dlg{width:min(100%,400px);max-height:100%;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:grid;gap:14px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));translate:-50% 20px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:30;max-width:90vw}
+.toast.show{opacity:1;translate:-50% 0}
+
+@media (max-width:760px){
+  .app{grid-template-columns:60px minmax(0,1fr)}
+  .rail{padding:12px 6px;align-items:center}
+  .brand{padding:2px 0 12px}
+  .brand-text,.nav .t,.rail-foot{display:none}
+  .nav{justify-content:center;padding:11px 0}
+  .who-name{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ---------- KinoQuiz visual refresh: premium cinema, vivid accents ---------- */
+/* Seven-round authoring: clear separation and readable question groups */
+.round-builder{border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0;background:color-mix(in srgb,var(--surface) 94%,var(--accent) 6%)}
+.round-builder legend{padding:0 8px;color:var(--accent);font-size:15px}
+.round-question{display:grid;gap:10px;padding:14px;margin:12px 0;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.round-question h4{margin:0;color:var(--muted);font-size:13px}
+.round-question label{display:grid;gap:5px}
+@media(min-width:900px){.round-question .two{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+:root{
+  --bg:#F3F2FA;
+  --surface:#FFFFFF;
+  --ink:#201D35;
+  --muted:#77758B;
+  --line:#E5E2F0;
+  --accent:#7657F6;
+  --on-accent:#FFFFFF;
+  --ok:#159B79;
+  --bad:#D94D65;
+  --tint:color-mix(in srgb,var(--accent) 11%,var(--surface));
+  --accent-ink:color-mix(in srgb,var(--accent) 75%,var(--ink));
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10111D;--surface:#191A2B;--ink:#F5F3FF;--muted:#A7A5BD;
+  --line:#2D2E43;--ok:#49C6A2;--bad:#FF8191;color-scheme:dark
+}}
+:root[data-theme="dark"]{
+  --bg:#10111D;--surface:#191A2B;--ink:#F5F3FF;--muted:#A7A5BD;
+  --line:#2D2E43;--ok:#49C6A2;--bad:#FF8191;color-scheme:dark
+}
+body{
+  background:
+    radial-gradient(ellipse at 88% 4%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 32rem),
+    var(--bg);
+  letter-spacing:.005em;
+}
+h1{letter-spacing:-.045em;line-height:1.12}
+h2{letter-spacing:-.025em}
+.app{grid-template-columns:248px minmax(0,1fr)}
+.rail{
+  background:var(--surface);
+  border-right:1px solid var(--line);
+  padding:22px 14px;
+  gap:7px;
+}
+.brand{padding:5px 10px 25px;gap:12px}
+.brand-mark{
+  width:40px;height:40px;border-radius:13px;
+  background:linear-gradient(135deg,var(--accent),#A78BFA 58%,#F18A9B);
+  color:#fff;box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 28%,transparent)
+}
+.brand-text{font-size:16px;letter-spacing:-.04em}
+.nav{
+  min-height:46px;padding:11px 13px;border-radius:12px;gap:13px;
+  transition:background .18s ease,color .18s ease,transform .18s ease;
+}
+.nav:hover{transform:translateX(2px)}
+.nav[aria-current="page"]{
+  color:var(--accent-ink);
+  background:linear-gradient(100deg,var(--tint),color-mix(in srgb,var(--accent) 4%,var(--surface)));
+  box-shadow:inset 3px 0 0 var(--accent);
+}
+.nav[aria-current="page"] svg{color:var(--accent)}
+.rail-foot{padding:14px 10px 4px;line-height:1.5}
+.top{
+  min-height:72px;padding:13px 28px;
+  background:color-mix(in srgb,var(--surface) 90%,transparent);
+  backdrop-filter:blur(18px);
+}
+.search input{
+  border-radius:13px;padding:11px 14px 11px 39px;
+  background:var(--bg);border-color:transparent;transition:border-color .2s,box-shadow .2s;
+}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--tint);outline:0}
+.seg{border-radius:12px;padding:3px;border-color:var(--line)}
+.seg button{border-radius:9px;padding:7px 12px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:0 3px 10px color-mix(in srgb,var(--accent) 25%,transparent)}
+.wrap{max-width:1180px;padding:34px 30px 82px}
+.stack{gap:25px}
+.cols{gap:22px}
+.cards{gap:19px}
+.card{
+  border-radius:18px;border-color:var(--line);
+  box-shadow:0 5px 22px rgba(35,27,75,.045);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+}
+.card:hover{box-shadow:0 12px 32px rgba(35,27,75,.09);border-color:color-mix(in srgb,var(--accent) 22%,var(--line))}
+.qcard:hover{transform:translateY(-4px)}
+.pad{padding:20px}
+.btn{
+  min-height:40px;border-radius:11px;padding:9px 16px;
+  transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;
+}
+.btn:hover{transform:translateY(-1px);border-color:var(--accent)}
+.btn.primary{
+  background:linear-gradient(115deg,var(--accent),color-mix(in srgb,var(--accent) 70%,#D17BFF));
+  color:#fff;border:0;box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 23%,transparent)
+}
+.btn.primary:hover{filter:brightness(1.06);box-shadow:0 9px 20px color-mix(in srgb,var(--accent) 30%,transparent)}
+.btn.danger{border-color:color-mix(in srgb,var(--bad) 22%,var(--line))}
+.chip{border-radius:12px;padding:8px 14px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.badge{border-radius:9px;padding:4px 9px}
+.badge.paid{background:linear-gradient(110deg,#F4A261,#F06A78);color:#27152A}
+.badge.free{color:var(--ok);background:color-mix(in srgb,var(--ok) 9%,var(--surface));border-color:color-mix(in srgb,var(--ok) 25%,var(--line))}
+.hero{
+  position:relative;isolation:isolate;overflow:hidden;
+  padding:28px;border-radius:22px;
+  background:linear-gradient(116deg,#272044 0%,#4B347F 54%,#7657F6 100%);
+  color:#fff;box-shadow:0 16px 38px rgba(65,45,120,.18);
+}
+.hero:after{
+  content:"";position:absolute;z-index:-1;width:300px;height:300px;right:7%;top:-190px;
+  border:1px solid rgba(255,255,255,.17);border-radius:50%;
+  box-shadow:0 0 0 28px rgba(255,255,255,.035),0 0 0 58px rgba(255,255,255,.025);
+}
+.hero .lbl-up,.hero .muted{color:rgba(255,255,255,.72)}
+.hero h1{color:#fff;max-width:650px}
+.slate{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:14px;backdrop-filter:blur(12px)}
+.slate-bar{border:0;border-bottom:1px solid rgba(255,255,255,.22);background:repeating-linear-gradient(-55deg,rgba(255,255,255,.25) 0 14px,rgba(255,255,255,.08) 14px 28px)}
+.slate-body div{border-color:rgba(255,255,255,.18)}
+.slate-body .lbl-up{color:rgba(255,255,255,.7)}
+.facts{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;
+}
+.facts div{
+  display:flex;flex-direction:column;gap:3px;padding:15px 17px;
+  background:var(--surface);border:1px solid var(--line);border-radius:15px;
+  box-shadow:0 4px 16px rgba(35,27,75,.035);
+}
+.facts dt{font-size:12px;color:var(--muted)}
+.facts dd{font-size:23px;letter-spacing:-.04em;color:var(--ink)}
+.news-item{padding:18px 20px;gap:18px}
+.news-item h3{font-size:15px}
+.when span{color:var(--accent)}
+.film{height:9px;background:radial-gradient(circle at 50% 50%,var(--surface) 2px,transparent 2.8px) 0 0/14px 100% repeat-x,var(--accent)}
+.qcard .film{background:radial-gradient(circle at 50% 50%,var(--surface) 2px,transparent 2.8px) 0 0/14px 100% repeat-x,linear-gradient(90deg,var(--accent),#F18A9B,#F4B35E)}
+.seven{gap:4px}
+.seven i{height:5px;border-radius:99px;background:linear-gradient(90deg,var(--accent),#B79AFF)}
+.opt{
+  border-radius:13px;padding:14px 16px;min-height:52px;
+  transition:border-color .15s,background .15s,transform .15s;
+}
+.opt:hover:not([disabled]){transform:translateX(3px);background:var(--tint)}
+.opt.right{background:color-mix(in srgb,var(--ok) 9%,var(--surface))}
+.opt.wrong{background:color-mix(in srgb,var(--bad) 8%,var(--surface))}
+.bar{height:8px;border-radius:99px}
+.bar i{border-radius:99px;background:linear-gradient(90deg,var(--accent),#D17BFF)}
+input[type=text],input[type=password],input[type=date],input[type=number],input[type=url],select,textarea{
+  border-radius:11px;padding:11px 12px;background:var(--surface);
+}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--tint)}
+fieldset{border-radius:14px;padding:16px}
+details.card>summary{padding:17px 20px}
+.dlg{border-radius:20px;box-shadow:0 22px 70px rgba(0,0,0,.22)}
+.toast{border-radius:12px}
+.sw{width:39px;height:39px}
+.sw[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:3px}
+@media(max-width:760px){
+  .app{display:block;min-height:100vh}
+  .rail{
+    position:fixed;z-index:15;left:0;right:0;bottom:0;top:auto;
+    width:100%;height:auto;min-height:68px;padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));
+    border-right:0;border-top:1px solid var(--line);
+    display:flex;flex-direction:row;align-items:stretch;justify-content:space-around;
+    background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:blur(18px);
+    box-shadow:0 -8px 24px rgba(28,22,60,.07);
+  }
+  .brand,.rail-foot{display:none}
+  .nav{
+    flex:1;min-width:0;min-height:52px;padding:6px 2px;
+    flex-direction:column;justify-content:center;gap:3px;border-radius:11px;
+    font-size:10px;
+  }
+  .nav .t{display:block;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0;line-height:1.15}.nav .t:after{content:attr(data-short);font-size:9px;display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav[aria-current="page"]{box-shadow:inset 0 3px 0 var(--accent)}
+  .top{position:sticky;top:0;padding:10px 14px;gap:8px}
+  .search{flex-basis:100%;order:3}
+  .seg{order:1}
+  .who{order:2;margin-left:auto}
+  .wrap{padding:23px 15px calc(94px + env(safe-area-inset-bottom,0px))}
+  .hero{padding:22px 19px;border-radius:18px;gap:17px}
+  .hero h1{font-size:27px}
+  .slate{width:100%;max-width:none}
+  .facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .facts div{padding:12px 14px}
+  .facts dd{font-size:21px}
+  .cards{grid-template-columns:1fr}
+  .cols{grid-template-columns:1fr}
+  .pad{padding:17px}
+}
+@media(max-width:380px){
+  .nav .t:after{font-size:8px}
+  .top{gap:7px}
+  .who .btn{padding:7px 9px}
+}
+@media(prefers-reduced-motion:reduce){
+  .card,.btn,.nav,.opt{transition:none!important}
+}
+
+
+
+/* ===== KinoQuiz Studio: vivid cinema dashboard + focused creator workspace ===== */
+:root{--bg:#f4f1fb;--surface:#fff;--ink:#211b35;--muted:#7e7892;--line:#e8e1f2;--accent:#7857f5;--on-accent:#fff}
+body{background:radial-gradient(ellipse at 85% -15%,rgba(125,91,255,.14),transparent 42rem),linear-gradient(180deg,#f7f4fc 0%,var(--bg) 65%);}
+.wrap{max-width:1320px;padding:32px clamp(18px,3.2vw,48px) 78px}
+.dashboard-flow{display:flex;flex-direction:column;gap:34px}
+.dashboard-hero{min-height:300px;position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(260px,.9fr);align-items:center;gap:25px;padding:clamp(26px,4vw,48px);border-radius:30px;color:#fff;background:radial-gradient(circle at 78% 30%,rgba(186,149,255,.4),transparent 25%),linear-gradient(117deg,#1c1730 0%,#37265f 47%,#7857f5 100%);box-shadow:0 22px 60px rgba(76,53,133,.2)}
+.dashboard-hero:before{content:"";position:absolute;inset:0;z-index:-1;opacity:.12;background-image:radial-gradient(rgba(255,255,255,.85) .7px,transparent .7px);background-size:19px 19px;mask-image:linear-gradient(90deg,transparent,#000)}
+.hero-copy{max-width:680px}.hero-kicker,.eyebrow{font-size:10px;letter-spacing:.17em;font-weight:800;color:var(--accent);text-transform:uppercase}.hero-kicker{display:inline-flex;align-items:center;gap:9px;color:#d9ccff}.hero-kicker i{width:7px;height:7px;border-radius:50%;background:#ffce6a;box-shadow:0 0 0 5px rgba(255,206,106,.14)}
+.dashboard-hero h1{font-size:clamp(30px,4vw,49px);line-height:1.08;max-width:670px;margin:18px 0 13px;color:white;letter-spacing:-.055em}.dashboard-hero .hero-copy>p{max-width:520px;color:rgba(255,255,255,.72);font-size:15px;line-height:1.7}
+.hero-actions{display:flex;flex-wrap:wrap;align-items:center;gap:18px;margin-top:26px}.hero-btn{border:0!important;border-radius:13px!important;background:#ffcf71!important;color:#24192f!important;padding:13px 18px!important;box-shadow:0 9px 22px rgba(12,7,26,.2)}.hero-btn span{font-size:18px}.hero-note{font-size:9px;font-weight:800;letter-spacing:.15em;color:rgba(255,255,255,.57)}
+.hero-art{height:230px;position:relative;display:grid;place-items:center}.art-orbit{position:absolute;width:260px;height:260px;border:1px solid rgba(255,255,255,.18);border-radius:50%}.orbit-two{width:195px;height:195px;border-style:dashed;opacity:.7}.art-ticket{position:relative;width:174px;height:206px;transform:rotate(8deg);padding:13px;border:1px solid rgba(255,255,255,.6);border-radius:13px;background:linear-gradient(155deg,#fff9ed,#e6d9ff 52%,#bba7ff);box-shadow:0 20px 50px rgba(12,7,30,.35);color:#2d2052}.ticket-top,.ticket-bottom{display:flex;justify-content:space-between;align-items:center;font-size:7px;letter-spacing:.14em;font-weight:900}.ticket-top{height:25px;border-bottom:1px dashed rgba(45,32,82,.3)}.ticket-top b{font-size:11px}.ticket-center{height:125px;display:grid;place-items:center;position:relative;background:radial-gradient(circle at 50%,#8c70f8,#483278 75%);margin:10px 0;border-radius:7px;overflow:hidden}.ticket-center:before,.ticket-center:after{content:"";position:absolute;border:1px solid rgba(255,255,255,.25);border-radius:50%;width:145px;height:145px}.ticket-center:after{width:105px;height:105px}.ticket-center>span{position:absolute;bottom:8px;right:10px;color:rgba(255,255,255,.6);font-size:9px;font-weight:800;letter-spacing:.2em}.ticket-play{width:43px;height:43px;display:grid;place-items:center;border-radius:50%;background:#ffcf71;color:#2d2052;padding-left:3px;z-index:1;box-shadow:0 6px 18px rgba(0,0,0,.22)}.ticket-bottom{height:18px}.art-spark{position:absolute;color:#ffcf71;font-size:25px}.spark-a{top:27px;right:18%}.spark-b{bottom:22px;left:14%;font-size:20px}.art-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:#ff8cae;right:12%;bottom:36px;box-shadow:0 0 0 9px rgba(255,140,174,.12)}
+.section-top{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;margin-bottom:16px}.section-top h2,.leader-head h2{font-size:20px;letter-spacing:-.04em;margin-top:5px}.section-side{font-size:11px;color:var(--muted);font-weight:700}
+.rounds-section{display:flex;flex-direction:column}.round-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:11px}.round-tile{min-width:0;min-height:159px;position:relative;overflow:hidden;text-align:left;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:7px;padding:15px 13px;border:1px solid var(--line);border-radius:17px;background:linear-gradient(145deg,color-mix(in srgb,var(--tile) 12%,white),white 80%);cursor:pointer;color:var(--ink);transition:transform .2s,box-shadow .2s,border-color .2s}.round-tile:before{content:"";position:absolute;width:78px;height:78px;right:-26px;top:-25px;border-radius:50%;background:color-mix(in srgb,var(--tile) 20%,transparent)}.round-tile:hover{transform:translateY(-5px);border-color:color-mix(in srgb,var(--tile) 45%,var(--line));box-shadow:0 12px 26px rgba(50,35,90,.1)}.tile-number{position:absolute;top:12px;left:13px;font-size:9px;letter-spacing:.12em;color:var(--muted);font-weight:800}.tile-icon{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--tile);color:white;font-size:18px;box-shadow:0 5px 14px color-mix(in srgb,var(--tile) 25%,transparent)}.tile-title{font-size:12px;font-weight:800;line-height:1.25}.tile-desc{font-size:10px;color:var(--muted);line-height:1.35}
+.universe-strip{display:flex;gap:10px;flex-wrap:wrap;padding-top:15px}.universe-strip span{padding:8px 12px;border:1px solid var(--line);border-radius:99px;background:rgba(255,255,255,.62);font-size:9px;letter-spacing:.1em;font-weight:800;color:#706985}
+.dashboard-lower{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.75fr);gap:18px;align-items:start}.collection-panel{min-width:0}.dashboard-collections{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px}.leaderboard-card{padding:21px;border-radius:21px;color:#fff;background:linear-gradient(145deg,#25203d,#3a2b62);box-shadow:0 15px 32px rgba(44,31,82,.13)}.leader-head{display:flex;align-items:center;gap:12px}.leader-head .eyebrow{color:#c4b4ff}.leader-head h2{color:#fff}.trophy{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:rgba(255,255,255,.12);font-size:21px}.leader-sub{font-size:11px;color:rgba(255,255,255,.57);margin:9px 0 17px}.rank-list{display:flex;flex-direction:column;gap:9px}.rank-line{display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.055)}.rank-no{width:22px;font-size:16px;text-align:center}.rank-player{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.rank-player b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rank-player small,.rank-score small{font-size:10px;color:rgba(255,255,255,.54)}.rank-score{text-align:right;display:flex;flex-direction:column;gap:3px;font-variant-numeric:tabular-nums}.rank-score b{font-size:12px}.rank-empty{padding:22px 12px;text-align:center;color:rgba(255,255,255,.58);font-size:12px;border:1px dashed rgba(255,255,255,.17);border-radius:12px}.leader-link{margin-top:15px;padding:0;border:0;background:none;color:#d9ccff;font:700 11px var(--font-body);cursor:pointer}.dash-news{padding:20px}.dash-news .news-item{padding:13px 0;grid-template-columns:80px minmax(0,1fr)}
+.empty-studio{min-height:150px;display:flex;align-items:center;gap:17px;padding:22px;text-align:left}.empty-studio-mark{width:54px;height:54px;flex:none;border-radius:17px;display:grid;place-items:center;background:linear-gradient(135deg,#7957f5,#e275aa);color:#fff;font-size:23px;box-shadow:0 9px 23px rgba(120,87,245,.22)}.empty-studio h3{margin:0 0 5px;font-size:15px}.empty-studio p{font-size:12px;line-height:1.55;max-width:430px}.empty-studio>.btn{margin-left:auto;flex:none}.admin-callout{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:17px 20px;border:1px solid #ded5fa;border-radius:17px;background:linear-gradient(100deg,#f0ebff,#fff)}.admin-callout b{font-size:14px}.admin-callout p{font-size:12px;color:var(--muted);margin-top:4px}
+/* Admin creator */
+.studio-page{display:flex;flex-direction:column;gap:25px}.studio-heading{display:flex;align-items:center;justify-content:space-between;gap:18px}.studio-heading h1{margin:7px 0}.studio-heading p{font-size:14px}.studio-badge{display:flex;align-items:center;gap:8px;padding:10px 13px;border:1px solid #e2d9fc;border-radius:99px;color:#6e4ce8;background:#f4f0ff;font-size:9px;font-weight:900;letter-spacing:.13em;white-space:nowrap}.studio-badge span{font-size:16px}.studio-form{gap:20px}.studio-basics{border-radius:19px!important;background:linear-gradient(110deg,#fff,#f5f1ff)!important}.studio-step{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.15em}.studio-step b{font-size:30px;letter-spacing:-.06em;opacity:.25}.small-note{font-size:11px}.studio-rounds-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-top:2px}.studio-rounds-head h2{font-size:23px;margin:5px 0}.studio-rounds-head p{font-size:12px}.round-count{font-size:40px;font-weight:900;line-height:.9;letter-spacing:-.08em;color:var(--accent);text-align:right}.round-count small{display:block;font-size:8px;letter-spacing:.14em;margin-top:7px;color:var(--muted)}.studio-round-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.studio-round{min-width:0;border:1px solid var(--line);border-radius:19px;padding:17px;background:var(--surface);box-shadow:0 6px 19px rgba(51,35,91,.035)}.studio-round legend{padding:0 9px;color:var(--ink);font-size:14px;font-weight:800;letter-spacing:0;text-transform:none}.studio-round-no{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:10px;margin-right:7px;background:var(--tile);color:#fff;font-size:11px}.studio-round-intro{display:flex;align-items:center;gap:9px;margin:2px 0 12px}.studio-glyph{width:27px;height:27px;display:grid;place-items:center;border-radius:9px;background:color-mix(in srgb,var(--tile) 13%,white);color:var(--tile);font-size:15px}.studio-round-intro p{font-size:11px;color:var(--muted);line-height:1.35}.round-question{padding:13px;border-radius:14px;background:#faf9fd;border:1px solid #eee9f7;gap:10px}.round-question h4{font-size:10px;letter-spacing:.1em;color:var(--tile);font-weight:900}.round-question label{font-size:11px}.round-question textarea{min-height:64px}.round-question input{font-size:12px}.round-question .two{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.round-question .two label:first-child{grid-column:1/-1}.round-question .two input{padding:9px}.add-question{width:100%;margin-top:10px;border:1px dashed color-mix(in srgb,var(--tile) 44%,var(--line));border-radius:11px;padding:10px;background:color-mix(in srgb,var(--tile) 5%,white);color:var(--ink);font-size:11px;font-weight:800;cursor:pointer}.add-question span{color:var(--tile);font-size:17px;vertical-align:-1px;margin-right:4px}.studio-submit{display:flex;align-items:center;justify-content:space-between;gap:20px;border-radius:19px!important;background:linear-gradient(110deg,#29203e,#473271)!important;color:#fff}.studio-submit b{font-size:15px}.studio-submit .muted{font-size:11px;color:rgba(255,255,255,.6);margin-top:5px}.submit-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.submit-actions .err{color:#ffb4bf;max-width:360px}.publish-btn{background:linear-gradient(110deg,#ffcf71,#f3a6a2)!important;color:#271c36!important;border:0!important;padding:12px 17px!important}.review-strip{display:flex;flex-direction:column;gap:12px}.review-strip>.row{padding:10px 0;border-top:1px solid var(--line)}.studio-lock{display:flex;align-items:center;gap:20px;padding:25px}.lock-mark{width:60px;height:60px;display:grid;place-items:center;border-radius:18px;background:linear-gradient(135deg,#7b57f7,#e47eaf);color:white;font-size:25px}.studio-lock p{margin:5px 0 13px;font-size:12px}
+@media(max-width:1100px){.round-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.dashboard-lower{grid-template-columns:minmax(0,1fr) 300px}}
+@media(max-width:820px){.dashboard-hero{grid-template-columns:1fr;min-height:0}.hero-art{position:absolute;right:0;top:8px;width:235px;opacity:.38;transform:scale(.85);transform-origin:top right}.hero-copy{position:relative;z-index:1}.dashboard-lower{grid-template-columns:1fr}.studio-round-grid{grid-template-columns:1fr}.round-tile{min-height:140px}}
+@media(max-width:560px){.dashboard-hero{padding:24px 21px;border-radius:22px}.dashboard-hero h1{font-size:31px;max-width:320px}.dashboard-hero .hero-copy>p{font-size:13px;max-width:300px}.hero-art{right:-45px;top:-4px;opacity:.23}.hero-actions{gap:12px}.hero-note{font-size:8px}.round-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.round-tile{min-height:132px;padding:13px}.round-tile:last-child{grid-column:1/-1;min-height:116px}.section-top{align-items:flex-start}.universe-strip{gap:7px}.universe-strip span{font-size:8px;padding:7px 9px}.empty-studio{align-items:flex-start;flex-wrap:wrap}.empty-studio>.btn{margin-left:70px}.studio-heading{align-items:flex-start;flex-direction:column}.studio-badge{align-self:flex-start}.studio-rounds-head h2{font-size:19px}.round-question .two{grid-template-columns:1fr}.round-question .two label:first-child{grid-column:auto}.studio-submit{align-items:stretch;flex-direction:column}.submit-actions{align-items:stretch}.publish-btn{width:100%}.studio-basics .two{grid-template-columns:1fr}}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11101a;--surface:#1b1928;--ink:#f7f2ff;--muted:#aaa2bd;--line:#302b40}.round-tile{background:linear-gradient(145deg,color-mix(in srgb,var(--tile) 20%,#211d30),#1b1928)}.universe-strip span{background:#211e2c;color:#cec6df}.admin-callout{background:linear-gradient(100deg,#29213e,#201d2c);border-color:#443760}.studio-basics{background:linear-gradient(110deg,#1d1a2a,#28213b)!important}.round-question{background:#211e2c;border-color:#383147}.add-question{background:color-mix(in srgb,var(--tile) 12%,#211e2c)}.studio-badge{background:#2a2140;border-color:#4b3a70;color:#d6c8ff}}
+:root[data-theme="dark"]{--bg:#11101a;--surface:#1b1928;--ink:#f7f2ff;--muted:#aaa2bd;--line:#302b40}
+:root[data-theme="dark"] .round-tile{background:linear-gradient(145deg,color-mix(in srgb,var(--tile) 20%,#211d30),#1b1928)}
+:root[data-theme="dark"] .universe-strip span{background:#211e2c;color:#cec6df}
+:root[data-theme="dark"] .admin-callout{background:linear-gradient(100deg,#29213e,#201d2c);border-color:#443760}
+:root[data-theme="dark"] .studio-basics{background:linear-gradient(110deg,#1d1a2a,#28213b)!important}
+:root[data-theme="dark"] .round-question{background:#211e2c;border-color:#383147}
+:root[data-theme="dark"] .add-question{background:color-mix(in srgb,var(--tile) 12%,#211e2c)}
+:root[data-theme="dark"] .studio-badge{background:#2a2140;border-color:#4b3a70;color:#d6c8ff}
+
+
+
+/* v5: private three-try answers, multi-media actor/character clues */
+.media-slots{display:grid;gap:10px;margin:4px 0}
+.media-slot{display:grid;gap:8px;padding:11px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--surface) 92%,var(--accent) 8%)}
+.media-slot>b{font-size:11px;color:var(--accent);letter-spacing:.06em}
+.media-slot label{display:grid;gap:5px;font-size:11px}
+.media-slot input[type=file]{font-size:11px;padding:8px;border:1px dashed var(--line);border-radius:8px;width:100%;background:var(--bg)}
+.media-help{font-size:10px;line-height:1.45;color:var(--muted)}
+.quiz-media-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;width:100%}
+.quiz-media-item{min-width:0;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.quiz-media-item img,.quiz-media-item video{display:block;width:100%;max-height:240px;object-fit:contain;border-radius:8px;background:#100d19}
+.quiz-media-item audio{width:100%;margin-top:6px}
+.quiz-media-item iframe{display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:8px;background:#100d19}
+.attempt-note{padding:11px 13px;border-radius:11px;background:#fff5dc;color:#765013;font-size:12px;font-weight:700;line-height:1.5}
+.attempt-note.success{background:#e6f7ef;color:#13724d}
+.attempt-hint{display:block;color:var(--muted);font-size:10px;font-weight:600;margin-top:-3px}
+.add-media-slot{border:1px dashed var(--line);border-radius:9px;padding:9px 11px;background:var(--bg);font-size:11px;font-weight:800;color:var(--accent);cursor:pointer}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){.media-slot{background:#211e2c}.attempt-note{background:#49391c;color:#ffe5a8}.attempt-note.success{background:#16392f;color:#9be2c4}}}
+:root[data-theme="dark"] .media-slot{background:#211e2c}
+:root[data-theme="dark"] .attempt-note{background:#49391c;color:#ffe5a8}
+:root[data-theme="dark"] .attempt-note.success{background:#16392f;color:#9be2c4}
+
+/* v4: single-collection dashboard, open-answer gameplay and one-second clip alert */
+.one-second-alert{display:flex;gap:13px;align-items:flex-start;padding:15px 17px;border:1px solid #edb84c;border-radius:15px;background:linear-gradient(110deg,#fff4d9,#fff9ec);color:#54360b}
+.one-second-alert-icon{width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:12px;background:#f6c65d;color:#402b08;font-size:20px}
+.one-second-alert b{font-size:11px;letter-spacing:.12em}.one-second-alert p{margin-top:4px;font-size:13px;line-height:1.5}
+.answer-entry{display:grid;gap:8px;font-size:12px;font-weight:800}.answer-entry input{font-size:17px!important;padding:14px 15px!important;border-radius:13px!important}
+.answer-feedback{padding:12px 14px;border-radius:12px;font-weight:800;font-size:14px}.answer-feedback.is-right{background:#e6f7ef;color:#13724d}.answer-feedback.is-wrong{background:#fff0f1;color:#a52e43}
+.dash-news .empty{padding:22px 8px;text-align:left}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){.one-second-alert{background:linear-gradient(110deg,#49391c,#302718);border-color:#8e6a29;color:#ffe5a8}.answer-feedback.is-right{background:#16392f;color:#9be2c4}.answer-feedback.is-wrong{background:#47252f;color:#ffc0c9}}}
+:root[data-theme="dark"] .one-second-alert{background:linear-gradient(110deg,#49391c,#302718);border-color:#8e6a29;color:#ffe5a8}
+:root[data-theme="dark"] .answer-feedback.is-right{background:#16392f;color:#9be2c4}
+:root[data-theme="dark"] .answer-feedback.is-wrong{background:#47252f;color:#ffc0c9}
+@media(max-width:600px){.one-second-alert{padding:12px}.answer-entry input{font-size:16px!important}}
+
+/* v6: embedded clues, party lobby, streamlined auth and storefront */
+.media-embed iframe{display:block;width:100%;min-height:280px;aspect-ratio:16/9;border:0;border-radius:13px;background:#100d19}
+.quiz-media-grid .quiz-media-item{min-width:0;overflow:hidden;border-radius:14px;background:var(--bg);border:1px solid var(--line)}
+.quiz-media-item img,.quiz-media-item video{display:block;width:100%;max-height:390px;object-fit:contain;background:#100d19;border-radius:12px}
+.quiz-media-item audio{display:block;width:100%;padding:14px}
+.auth-toggle{display:flex;gap:8px;padding:4px;background:var(--bg);border-radius:12px}
+.auth-toggle button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:transparent}
+.auth-links{padding-top:4px}.text-link{border:0;background:none;padding:0;color:var(--accent);font-weight:700;cursor:pointer;text-align:left}
+.lobby-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.friend-list{display:grid;gap:9px}.friend-row,.cart-row{display:flex;align-items:center;gap:12px;justify-content:space-between;border-bottom:1px solid var(--line);padding:10px 0}.friend-row:last-child,.cart-row:last-child{border-bottom:0}.friend-avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:11px;background:var(--tint);color:var(--accent);font-weight:800}.spacer{flex:1}.player-pills{display:flex;flex-wrap:wrap;gap:9px}.player-pill{display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid var(--line);border-radius:13px;background:var(--bg)}.player-pill button{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer}.turn-banner{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:15px;background:linear-gradient(100deg,var(--tint),var(--surface));border:1px solid var(--line)}.turn-banner>span:first-child{font-size:25px}.turn-banner div{display:flex;flex-direction:column;flex:1}.turn-banner small{font-size:10px;letter-spacing:.12em;color:var(--muted);font-weight:800}
+.store-hero{position:relative;overflow:hidden;padding:30px;border-radius:23px;color:#fff;background:radial-gradient(circle at 83% 10%,rgba(255,255,255,.22),transparent 19rem),linear-gradient(118deg,#211a39,#5c3e9f 58%,#8a67fa)}.store-hero h1{margin:8px 0;font-size:clamp(28px,4vw,42px);color:white}.store-hero p{max-width:550px;color:rgba(255,255,255,.76)}.store-hero .eyebrow{color:#e3d8ff}.store-hero-icon{position:absolute;right:7%;top:12%;font-size:100px;opacity:.22}.store-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}.store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:16px}.store-product{overflow:hidden}.store-product-image{height:190px;display:grid;place-items:center;background:linear-gradient(135deg,#f1ecfb,#fff4e9);color:#8868df;font-size:42px;overflow:hidden}.store-product-image img{width:100%;height:100%;object-fit:cover}.store-price{font-size:18px;color:var(--accent)}.store-desc{font-size:13px;min-height:38px}.store-cart{position:sticky;top:100px}.cart-total{display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);font-size:17px}.cart-total b{font-size:22px}.support-card{max-width:700px}.support-orb{width:54px;height:54px;display:grid;place-items:center;border-radius:17px;background:var(--tint);color:var(--accent);font-size:24px}
+@media(max-width:850px){.store-layout{grid-template-columns:1fr}.store-cart{position:static}.lobby-grid{grid-template-columns:1fr}}
+.media-embed iframe,.quiz-media-item iframe{display:block;width:100%;min-height:260px;aspect-ratio:16/9;border:0;border-radius:13px;background:#100d19}
+
+/* ===== v8: motion + 3D layer ===== */
+.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.aurora i{position:absolute;width:46vmax;height:46vmax;border-radius:50%;filter:blur(80px);opacity:.26;will-change:transform;animation:drift 26s ease-in-out infinite alternate}
+.aurora i:nth-child(1){left:-12vmax;top:-14vmax;background:#8f6bff}
+.aurora i:nth-child(2){right:-16vmax;top:18vh;background:#ff8cae;animation-duration:32s;animation-delay:-8s;opacity:.18}
+.aurora i:nth-child(3){left:28vw;bottom:-24vmax;background:#ffcf71;animation-duration:38s;animation-delay:-14s;opacity:.15}
+:root[data-theme="dark"] .aurora i{opacity:.16}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .aurora i{opacity:.16}}
+@keyframes drift{to{transform:translate3d(9vmax,7vmax,0) scale(1.15)}}
+
+/* page entrance: sections rise in one after another */
+@keyframes rise{from{opacity:0;transform:translateY(22px) scale(.985)}}
+@keyframes flipIn{from{opacity:0;transform:perspective(1000px) rotateX(-20deg) translateY(24px)}}
+@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.86)}}
+.wrap.enter>*>*{animation:rise .6s cubic-bezier(.2,.8,.2,1) backwards}
+.wrap.enter>*>*:nth-child(2){animation-delay:.07s}
+.wrap.enter>*>*:nth-child(3){animation-delay:.14s}
+.wrap.enter>*>*:nth-child(4){animation-delay:.21s}
+.wrap.enter>*>*:nth-child(n+5){animation-delay:.28s}
+.wrap.enter .stack>.card.pad.stack{animation-name:flipIn;animation-duration:.7s}
+.wrap.enter .round-tile{animation:pop .6s cubic-bezier(.2,.9,.3,1.2) backwards}
+.wrap.enter .round-tile:nth-child(2){animation-delay:.05s}.wrap.enter .round-tile:nth-child(3){animation-delay:.1s}.wrap.enter .round-tile:nth-child(4){animation-delay:.15s}.wrap.enter .round-tile:nth-child(5){animation-delay:.2s}.wrap.enter .round-tile:nth-child(6){animation-delay:.25s}.wrap.enter .round-tile:nth-child(7){animation-delay:.3s}
+.wrap.enter .cards>*,.wrap.enter .store-grid>*,.wrap.enter .dashboard-collections>*{animation:pop .55s cubic-bezier(.2,.9,.3,1.1) backwards}
+.wrap.enter .cards>*:nth-child(2),.wrap.enter .store-grid>*:nth-child(2),.wrap.enter .dashboard-collections>*:nth-child(2){animation-delay:.07s}
+.wrap.enter .cards>*:nth-child(3),.wrap.enter .store-grid>*:nth-child(3),.wrap.enter .dashboard-collections>*:nth-child(3){animation-delay:.14s}
+.wrap.enter .cards>*:nth-child(n+4),.wrap.enter .store-grid>*:nth-child(n+4),.wrap.enter .dashboard-collections>*:nth-child(n+4){animation-delay:.21s}
+
+/* 3D tilt with moving glare (mouse only; set by JS) */
+.qcard,.qcard:hover,.round-tile,.round-tile:hover,.store-product,.store-product:hover,.leaderboard-card{
+  transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--ty,0px));
+  transform-origin:50% 60%;will-change:transform}
+.qcard:hover,.round-tile:hover,.store-product:hover{--ty:-6px}
+.tilting{transition:transform .08s ease-out,box-shadow .25s,border-color .2s!important}
+.qcard,.store-product,.leaderboard-card{position:relative}
+.qcard:after,.round-tile:after,.store-product:after,.leaderboard-card:after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:0;transition:opacity .25s;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.38),transparent 55%);mix-blend-mode:soft-light}
+.tilting:after{opacity:1}
+.round-tile .tile-icon{transition:transform .3s cubic-bezier(.2,.9,.3,1.4)}
+.round-tile:hover .tile-icon{transform:translateY(-3px) rotate(-8deg) scale(1.12)}
+.qcard:hover .film{animation:filmroll .9s linear infinite}
+@keyframes filmroll{from{background-position:0 0,0 0}to{background-position:14px 0,0 0}}
+
+/* hero: orbiting 3D ring of the seven rounds around the floating ticket */
+.hero-art{perspective:1000px}
+.search input[type=text]{padding:11px 14px 11px 40px}
+.ring3d{position:absolute;left:50%;top:50%;width:62px;height:86px;margin:-43px 0 0 -31px;transform-style:preserve-3d;
+  transform:rotateX(calc(-20deg + var(--hx,0deg)*.7)) rotateY(calc(var(--hy,0deg)*.5));transition:transform .25s ease-out}
+.ring-spin{position:absolute;inset:0;transform-style:preserve-3d;animation:spin 26s linear infinite}
+.ring-spin i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;border-radius:12px;color:#fff;
+  transform:rotateY(calc(var(--i)*51.4286deg)) translateZ(196px);
+  background:linear-gradient(150deg,color-mix(in srgb,var(--c) 70%,#fff),var(--c));
+  box-shadow:0 10px 24px rgba(8,4,22,.35),inset 0 0 0 1px rgba(255,255,255,.35)}
+.ring-spin i b{font-size:24px;text-shadow:0 2px 8px rgba(0,0,0,.25)}
+@keyframes spin{to{transform:rotateY(360deg)}}
+.art-ticket{position:relative;z-index:2;transform-style:preserve-3d;
+  transform:rotate(8deg) rotateY(var(--hy,0deg)) rotateX(var(--hx,0deg));transition:transform .25s ease-out;animation:floaty 6s ease-in-out infinite}
+.ticket-center{transform:translateZ(26px)}.ticket-play{transform:translateZ(18px)}
+.art-orbit{z-index:0}
+@keyframes floaty{50%{translate:0 -12px}}
+.art-spark{animation:twinkle 2.6s ease-in-out infinite;z-index:3}.spark-b{animation-delay:-1.2s}
+.art-dot{animation:floaty 4s ease-in-out infinite}
+@keyframes twinkle{50%{transform:scale(1.5) rotate(25deg);opacity:.55}}
+.orbit-one{animation:orbit 30s linear infinite}.orbit-two{animation:orbit 20s linear infinite reverse}
+@keyframes orbit{to{transform:rotate(360deg)}}
+
+/* buttons, nav, badges */
+.hero-btn{position:relative;overflow:hidden}
+.hero-btn:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.6) 50%,transparent 70%);transform:translateX(-130%);animation:sheen 3.6s ease-in-out infinite}
+@keyframes sheen{55%,100%{transform:translateX(130%)}}
+.btn:active{transform:scale(.96)!important}
+.nav:hover svg{animation:wiggle .55s}
+@keyframes wiggle{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+.trophy{animation:trophy 5s ease-in-out infinite;transform-style:preserve-3d}
+@keyframes trophy{0%,100%{transform:perspective(200px) rotateY(-28deg)}50%{transform:perspective(200px) rotateY(28deg) translateY(-3px)}}
+.brand-mark{animation:floaty 5s ease-in-out infinite}
+.rank-line{transition:transform .2s,background .2s}.rank-line:hover{transform:translateX(5px);background:rgba(255,255,255,.12)}
+.tile-icon,.empty-studio-mark,.lock-mark{animation:floaty 5s ease-in-out infinite}
+.rank-line:nth-child(1) .rank-no{animation:pop .8s backwards}
+
+/* gameplay feedback */
+.attempt-note:not(.success){animation:shake .45s}
+.attempt-note.success{animation:pop .5s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.opt.right{animation:pop .4s}
+.bar i{transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.overlay{animation:fadeIn .2s}.dlg{animation:dlgIn .35s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes fadeIn{from{opacity:0}}
+@keyframes dlgIn{from{opacity:0;transform:perspective(700px) rotateX(-14deg) translateY(18px) scale(.95)}}
+.fx-canvas{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:40}
+
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{animation:none!important;transition:none!important}
+  .aurora{display:none}
+}
+@media(max-width:600px){.ring-spin i{transform:rotateY(calc(var(--i)*51.4286deg)) translateZ(128px)}}
+
+/* ===== v9: profile ===== */
+.av{display:inline-grid;place-items:center;border-radius:50%;object-fit:cover;flex:none;color:#fff;font-weight:700;font-family:var(--font-display,inherit);box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px color-mix(in srgb,var(--accent) 55%,transparent)}
+.profile-card{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 14px;padding:11px 12px;border:1px solid var(--line);border-radius:16px;cursor:pointer;text-align:left;color:var(--ink);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 14%,var(--surface)),var(--surface));transition:transform .2s,box-shadow .2s,border-color .2s}
+.profile-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px color-mix(in srgb,var(--accent) 18%,transparent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.profile-card[aria-current="page"]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.profile-card .pc-text{display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25}
+.profile-card .pc-text b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-card .pc-text small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-card .pc-go{color:var(--muted);font-size:20px;transition:transform .2s}.profile-card:hover .pc-go{transform:translateX(3px);color:var(--accent)}
+.nav-profile{display:none!important}
+.rail{overflow-y:auto;overscroll-behavior:contain}
+.rail-foot{display:flex;flex-direction:column;gap:8px}
+.rail-brand{display:flex;align-items:center;gap:8px;font:700 14px var(--font-display,inherit);color:var(--ink);letter-spacing:-.03em}
+.rail-brand .brand-mark{width:24px;height:24px;border-radius:7px;animation:none}
+
+.prof-page{--gap:20px}
+.prof-grid{display:grid;grid-template-columns:minmax(0,370px) minmax(0,1fr);gap:20px;align-items:start}
+.prof-left{position:sticky;top:18px}
+.prof-hero{position:relative;overflow:hidden;padding:0 0 22px}
+.prof-cover{height:112px;position:relative;overflow:hidden;background:linear-gradient(120deg,var(--accent),color-mix(in srgb,var(--accent) 35%,#2a1d63))}
+.prof-cover i{position:absolute;border-radius:50%;background:rgba(255,255,255,.16);animation:floaty 7s ease-in-out infinite}
+.prof-cover i:nth-child(1){width:120px;height:120px;right:-24px;top:-44px}.prof-cover i:nth-child(2){width:54px;height:54px;left:22%;top:50px;animation-delay:-2s}.prof-cover i:nth-child(3){width:26px;height:26px;right:30%;top:20px;animation-delay:-4s}
+.prof-head{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:-58px;padding:0 18px;text-align:center}
+.prof-avatar{position:relative;perspective:600px}
+.prof-avatar .av.big{box-shadow:0 0 0 5px var(--surface),0 12px 28px rgba(20,10,60,.28);transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.prof-avatar:hover .av.big{transform:rotateY(14deg) rotateX(-6deg) scale(1.03)}
+.prof-cam{position:absolute;right:-2px;bottom:2px;width:36px;height:36px;border-radius:50%;border:3px solid var(--surface);background:var(--accent);color:#fff;cursor:pointer;display:grid;place-items:center;font-size:15px;padding:0;transition:transform .2s}
+.prof-cam:hover{transform:scale(1.12) rotate(-8deg)}
+.prof-id h1{margin:0;font-size:22px;line-height:1.15;overflow-wrap:anywhere}.prof-id p{margin:4px 0 0}
+.prof-rmphoto{display:block;margin:6px auto 0;font-size:12px}
+.prof-bio{margin:14px 22px 0;text-align:center;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.prof-chips,.prof-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:14px 18px 0}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:99px;font-size:12.5px;font-weight:600;background:var(--tint);color:var(--accent-ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip.alt{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.soc{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:12px;font-size:13px;font-weight:600;text-decoration:none;color:#fff;transition:transform .2s,box-shadow .2s;max-width:100%}
+.soc:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(0,0,0,.18)}
+.soc.tg{background:linear-gradient(135deg,#2AABEE,#229ED9)}.soc.ig{background:linear-gradient(135deg,#f09433,#dc2743 55%,#bc1888)}.soc.web{background:linear-gradient(135deg,#4b5563,#1f2937)}
+.prof-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:18px 16px 0}
+.prof-stats div{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:9px 4px;text-align:center}
+.prof-stats b{display:block;font-size:17px}.prof-stats span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.prof-progress{margin:18px 18px 0;display:grid;gap:7px}
+.bar{height:8px;border-radius:99px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 55%,#ff8cae));border-radius:99px}
+.prof-ach{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:18px 14px 0;perspective:700px}
+.ach{display:grid;justify-items:center;gap:4px;width:62px;text-align:center;opacity:.42;filter:grayscale(1);transition:opacity .3s}
+.ach small{font-size:10px;line-height:1.15;color:var(--muted)}
+.ach .coin{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;background:var(--bg);border:2px solid var(--line);transform-style:preserve-3d;transition:transform .8s cubic-bezier(.2,.8,.2,1)}
+.ach.on{opacity:1;filter:none}.ach.on .coin{background:linear-gradient(145deg,#ffe29a,#f2a900);border-color:#fff3c4;box-shadow:0 6px 14px rgba(242,169,0,.35)}
+.ach.on:hover .coin{transform:rotateY(360deg)}
+.chip-pick{display:flex;flex-wrap:wrap;gap:8px}
+.chip-check{position:relative;cursor:pointer;display:inline-block}
+.chip-check input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
+.chip-check span{display:inline-block;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--bg);font-size:13px;font-weight:600;color:var(--muted);transition:all .15s}
+.chip-check input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);transform:scale(1.04)}
+.chip-check input:focus-visible+span{outline:2px solid var(--ink);outline-offset:2px}
+.tg-feats{list-style:none;margin:0;padding:0;display:grid;gap:7px;font-size:14px}
+.badge.ok{background:#e4f6ec;color:#15683f;border-color:#b6e3c9}.badge.warn{background:#fff3d6;color:#845a00;border-color:#f1d792}
+.badge.st-Delivered{background:#e4f6ec;color:#15683f;border-color:#b6e3c9}.badge.st-Cancelled{background:#fde7e7;color:#a12626;border-color:#f3bcbc}.badge.st-Shipped,.badge.st-Confirmed{background:#e6eefc;color:#1f4ea3;border-color:#bcd0f3}
+.link-code{display:grid;gap:10px;justify-items:start;padding:14px;border-radius:14px;background:var(--tint);border:1px dashed color-mix(in srgb,var(--accent) 55%,var(--line));animation:rise .4s}
+.link-code p{margin:0;font-size:13px}.link-code code{font-size:18px;font-weight:700;letter-spacing:.08em;word-break:break-all}
+.prof-guest{text-align:center;justify-items:center}.prof-guest-orb{animation:floaty 5s ease-in-out infinite}
+.steps{margin:0;padding-left:20px;display:grid;gap:8px;font-size:14px}
+.err:empty{display:none}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .badge.ok{background:#14382b;color:#9be2c4;border-color:#235a45}:root:not([data-theme="light"]) .badge.warn{background:#49391c;color:#ffe5a8;border-color:#6d5427}}
+:root[data-theme="dark"] .badge.ok{background:#14382b;color:#9be2c4;border-color:#235a45}:root[data-theme="dark"] .badge.warn{background:#49391c;color:#ffe5a8;border-color:#6d5427}
+
+@media(max-width:1020px){.prof-grid{grid-template-columns:1fr}.prof-left{position:static}.prof-hero{max-width:640px;width:100%;margin:0 auto}}
+@media(max-width:760px){
+  .rail-foot,.rail-brand{display:none!important}
+  .profile-card{display:none}
+  .nav-profile{display:flex!important}
+  .nav-profile .av{width:26px!important;height:26px!important;font-size:12px!important;box-shadow:0 0 0 1.5px var(--line)}
+  .nav-profile[aria-current="page"] .av{box-shadow:0 0 0 2px var(--accent)}
+  .prof-cover{height:92px}.prof-stats b{font-size:16px}
+  .prof-page .two{grid-template-columns:1fr}
+}
+@media(max-width:380px){.prof-stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+<div class="app">
+  <aside class="rail" id="rail" aria-label="Sections"></aside>
+  <div>
+    <header class="top" id="top"></header>
+    <main id="main"></main>
+  </div>
+</div>
+<div id="modal" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="firebase-config.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ---------- storage ---------- */
+var mem={};
+function ld(k,d){try{var v=localStorage.getItem('kq_'+k);if(v!==null)return JSON.parse(v)}catch(e){}return k in mem?mem[k]:d}
+/* Firebase mode is on only when firebase-config.js holds real keys; otherwise the app stays 100% local. */
+var FB_ON=!!(window.KQ_CONFIG&&window.KQ_CONFIG.apiKey&&!/YOUR_/i.test(String(window.KQ_CONFIG.apiKey)));
+function kq(){return FB_ON&&window.KQ&&window.KQ.on?window.KQ:null}
+var REMOTE={news:{},cols:{},products:{},ranks:{},orders:{}},LOADED={},SENT={};
+function stable(o){return JSON.stringify(o,function(k,v){if(v&&typeof v==='object'&&!Array.isArray(v)){var r={};Object.keys(v).sort().forEach(function(x){r[x]=v[x]});return r}return v})}
+function sv(k,v,nosync){mem[k]=v;try{localStorage.setItem('kq_'+k,JSON.stringify(v))}catch(e){}if(!nosync&&FB_ON)kqPush(k,v)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function $(s){return document.querySelector(s)}
+
+/* Uploaded clue files are kept in IndexedDB, not localStorage, so larger videos
+   and several actor images do not overflow the browser's small storage quota. */
+var mediaDbPromise=null,mediaUrlCache={};
+function mediaDB(){
+ if(mediaDbPromise)return mediaDbPromise;
+ mediaDbPromise=new Promise(function(resolve,reject){
+  if(!window.indexedDB){reject(new Error('This browser does not support local media storage.'));return}
+  var req=indexedDB.open('kinoquiz-media-v1',1);
+  req.onupgradeneeded=function(){var db=req.result;if(!db.objectStoreNames.contains('assets'))db.createObjectStore('assets')};
+  req.onsuccess=function(){resolve(req.result)};req.onerror=function(){reject(req.error||new Error('Could not open media storage.'))};
+ });
+ return mediaDbPromise;
+}
+function saveMediaFile(file){
+ return mediaDB().then(function(db){return new Promise(function(resolve,reject){
+  var id='asset_'+Date.now()+'_'+Math.random().toString(36).slice(2,9),tx=db.transaction('assets','readwrite');
+  tx.objectStore('assets').put(file,id);tx.oncomplete=function(){resolve({ref:'idb://'+id,type:file.type||'',name:file.name||''})};tx.onerror=function(){reject(tx.error||new Error('Could not save uploaded media.'))};tx.onabort=function(){reject(tx.error||new Error('Media upload was cancelled.'))};
+ })});
+}
+function mediaTypeFromUrl(url){
+ var u=String(url||'').toLowerCase().split('?')[0].split('#')[0];
+ if(/\.(png|jpe?g|gif|webp|avif|svg)$/.test(u))return'image/*';
+ if(/\.(mp4|webm|mov|m4v|ogv)$/.test(u))return'video/*';
+ if(/\.(mp3|m4a|wav|ogg|aac|flac)$/.test(u))return'audio/*';
+ return'';
+}
+function youtubeId(url){
+ try{var u=new URL(url);var h=u.hostname.replace(/^www\./,'').toLowerCase(),id='';
+  if(h==='youtu.be')id=u.pathname.split('/').filter(Boolean)[0]||'';
+  else if(h==='youtube.com'||h==='m.youtube.com'||h==='music.youtube.com'){id=u.searchParams.get('v')||'';if(!id){var m=u.pathname.match(/\/(?:embed|shorts|live)\/([\w-]+)/);if(m)id=m[1]}}
+  return /^[\w-]{11}$/.test(id)?id:'';
+ }catch(e){return''}
+}
+function spotifyEmbedUrl(url){
+ try{
+  var u=new URL(url),h=u.hostname.replace(/^www\./,'').toLowerCase();
+  if(h!=='open.spotify.com'&&h!=='play.spotify.com')return '';
+  var m=u.pathname.match(/^\/(track|album|playlist|episode|show)\/([A-Za-z0-9]+)\/?/);
+  return m?'https://open.spotify.com/embed/'+m[1]+'/'+m[2]+'?utm_source=generator':'';
+ }catch(e){return ''}
+}
+function resolveMediaAsset(asset){
+ if(!asset)return Promise.resolve(null);
+ if(typeof asset==='string')asset={ref:asset,type:mediaTypeFromUrl(asset)};
+ var ref=String(asset.ref||'');
+ if(ref.indexOf('idb://')!==0)return Promise.resolve({src:ref,type:asset.type||mediaTypeFromUrl(ref),name:asset.name||''});
+ var id=ref.slice(6);
+ return mediaDB().then(function(db){return new Promise(function(resolve,reject){
+  var tx=db.transaction('assets','readonly'),req=tx.objectStore('assets').get(id);
+  req.onsuccess=function(){var blob=req.result;if(!blob){resolve(null);return}var src=mediaUrlCache[id]||(mediaUrlCache[id]=URL.createObjectURL(blob));resolve({src:src,type:asset.type||blob.type||'',name:asset.name||''})};
+  req.onerror=function(){reject(req.error||new Error('Could not load uploaded media.'))};
+ })});
+}
+function mediaAssetHtml(asset){
+ if(!asset||!asset.src)return'';
+ var src=esc(asset.src),yt=youtubeId(asset.src),sp=spotifyEmbedUrl(asset.src),type=String(asset.type||'').toLowerCase();
+ if(yt)return'<div class="quiz-media-item media-embed"><iframe src="https://www.youtube-nocookie.com/embed/'+yt+'?rel=0&modestbranding=1&playsinline=1" title="YouTube clue" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><div class="media-help">YouTube player · play and control the clue here</div></div>';
+ if(sp)return'<div class="quiz-media-item media-embed spotify-embed"><iframe src="'+esc(sp)+'" title="Spotify music clue" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe><div class="media-help">Spotify player · sign in to Spotify if requested</div></div>';
+ if(type.indexOf('image/')===0||(!type&&/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(asset.src)))return'<div class="quiz-media-item"><img src="'+src+'" alt="Quiz clue"></div>';
+ if(type.indexOf('video/')===0||(!type&&/\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(asset.src)))return'<div class="quiz-media-item"><video controls playsinline preload="metadata" src="'+src+'"></video></div>';
+ if(type.indexOf('audio/')===0||(!type&&/\.(mp3|m4a|wav|ogg|aac|flac)(\?|#|$)/i.test(asset.src)))return'<div class="quiz-media-item"><audio controls preload="none" src="'+src+'"></audio></div>';
+ // Unknown direct media URLs stay inside the question. Drive share links use the preview endpoint.
+ var embedSrc=asset.src,drive=String(asset.src).match(/drive\.google\.com\/file\/d\/([A-Za-z0-9_-]+)/),driveOpen=String(asset.src).match(/drive\.google\.com\/(?:open|uc)\?.*?(?:id=)([A-Za-z0-9_-]+)/);
+ if(drive||driveOpen)embedSrc='https://drive.google.com/file/d/'+(drive?drive[1]:driveOpen[1])+'/preview';
+ return'<div class="quiz-media-item media-embed"><iframe src="'+esc(embedSrc)+'" title="Embedded quiz clue" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>';
+}
+
+/* ---------- translations ---------- */
+var I18N={
+en:{tagline:`Movie quizzes and cinema news`,nav_dashboard:`Dashboard`,nav_news:`News`,nav_quiz:`Quiz`,nav_create:`Quiz studio`,nav_lobby:`Play with friends`,nav_store:`Store`,nav_profile:`Profile`,nav_support:`Support`,
+search_ph:`Search news and quizzes`,login:`Log in`,logout:`Log out`,signin:`Sign in`,signup:`Create account`,username:`Username`,password:`Password`,
+login_err:`Wrong email or password.`,exists:`This username is already taken.`,email_exists:`An account with this email already exists. Sign in instead.`,fill:`Fill in every field.`,
+hello:`Welcome back`,hello_guest:`Welcome to KinoQuiz`,dash_sub:`Today in cinema, and a quiz waiting for you.`,stat_news:`News items`,stat_quiz:`Collections`,stat_q:`Questions`,stat_best:`Best score`,
+latest_news:`Latest news`,featured:`Featured quiz`,see_all:`See all`,play:`Play`,free:`Free`,paid:`Paid`,unlock:`Unlock`,pay_login:`Log in to unlock`,unlock_note:`Demo only: no real payment is taken.`,cats:`categories`,qs:`questions`,
+news_title:`Movie news`,news_sub:`Premieres, actors and awards.`,all:`All`,sample:`Sample`,sources:`News sources`,sources_note:`Live feeds need a small server that pulls each source. These are the planned sources.`,not_connected:`Not connected`,
+add_news:`Add news item`,headline:`Headline`,about:`What it is about`,category:`Category`,source:`Source`,date:`Date`,publish:`Publish`,del:`Delete`,
+quiz_title:`Quiz collections`,quiz_sub:`Each collection has 7 distinct rounds: warm-up, pictures, music, actors, characters, quotes and one-second clips. Films, TV shows, series and cartoons are included.`,new_collection:`New collection`,coll_title:`Collection title`,price:`Price (USD)`,correct:`Correct answer`,wrong:`Wrong answer`,question:`Question`,need_all:`Fill every question and answer.`,best:`Best`,
+next:`Next`,finish:`Finish`,score:`Your score`,play_again:`Play again`,back:`Back to collections`,
+create_title:`Create questions`,create_sub:`Write your own questions or suggest them to the admins.`,need_login:`Log in to continue.`,save_private:`Save for myself`,suggest:`Suggest to admins`,my_questions:`My questions`,
+st_private:`Private`,st_pending:`Waiting for review`,st_approved:`Approved`,st_rejected:`Rejected`,inbox:`Suggestions to review`,inbox_empty:`No suggestions are waiting.`,approve:`Approve`,reject:`Reject`,by:`by`,community:`Community picks`,empty_mine:`You have not written any questions yet.`,
+theme_title:`Interface theme`,theme_sub:`Pick any accent color and a light or dark mode.`,mode:`Mode`,m_system:`System`,m_light:`Light`,m_dark:`Dark`,accent:`Accent color`,reset:`Reset`,
+support_title:`Support`,support_sub:`Write to us in Telegram.`,open_bot:`Open Telegram bot`,bot_unset:`The bot link has not been added yet.`,bot_link:`Telegram bot link`,save:`Save`,
+search_results:`Search results`,no_results:`Nothing found.`,saved:`Saved.`,added:`Added.`,sent:`Sent to the admins.`,scene:`Scene`,take:`News`,rt:`Right`,wr:`Wrong`,admin_note:`You are signed in as an admin. Review what visitors suggest.`,
+c_warmup:`Warm-up`,c_pictures:`Picture round`,c_music_round:`Movie music`,c_actor_round:`Actor challenge`,c_characters:`Character challenge`,c_quotes_round:`Quote challenge`,c_one_second:`One-second challenge`,c_actors:`Actors`,c_directors:`Directors`,c_quotes:`Quotes`,c_music:`Soundtracks`,c_oscars:`Oscars`,c_franchises:`Franchises`,c_cult:`Cult classics`,
+nc_premieres:`Premieres`,nc_actors:`Actors`,nc_awards:`Awards`,nc_casting:`Casting`,nc_festivals:`Festivals`},
+uz:{tagline:`Kino viktorinalari va kino yangiliklari`,nav_dashboard:`Boshqaruv paneli`,nav_news:`Yangiliklar`,nav_quiz:`Viktorina`,nav_create:`Viktorina studiyasi`,nav_lobby:`Do‘stlar bilan o‘ynash`,nav_store:`Do‘kon`,nav_profile:`Profil`,nav_support:`Yordam`,
+search_ph:`Yangilik va viktorinalarni qidirish`,login:`Kirish`,logout:`Chiqish`,signin:`Kirish`,signup:`Hisob yaratish`,username:`Login`,password:`Parol`,
+login_err:`Email yoki parol noto'g'ri.`,exists:`Bu login band.`,email_exists:`Bu email bilan hisob allaqachon mavjud. Kirish bo'limidan foydalaning.`,fill:`Barcha maydonlarni to'ldiring.`,
+hello:`Xush kelibsiz`,hello_guest:`KinoQuizga xush kelibsiz`,dash_sub:`Bugungi kino voqealari va sizni kutayotgan viktorina.`,stat_news:`Yangiliklar`,stat_quiz:`To'plamlar`,stat_q:`Savollar`,stat_best:`Eng yaxshi natija`,
+latest_news:`Oxirgi yangiliklar`,featured:`Tanlangan viktorina`,see_all:`Hammasi`,play:`O'ynash`,free:`Bepul`,paid:`Pullik`,unlock:`Ochish`,pay_login:`Ochish uchun kiring`,unlock_note:`Faqat demo: haqiqiy to'lov olinmaydi.`,cats:`toifa`,qs:`savol`,
+news_title:`Kino yangiliklari`,news_sub:`Premyeralar, aktyorlar va mukofotlar.`,all:`Hammasi`,sample:`Namuna`,sources:`Yangilik manbalari`,sources_note:`Jonli tasmalar uchun har bir manbadan ma'lumot oladigan kichik server kerak. Quyida rejalashtirilgan manbalar.`,not_connected:`Ulanmagan`,
+add_news:`Yangilik qo'shish`,headline:`Sarlavha`,about:`Nima haqida`,category:`Toifa`,source:`Manba`,date:`Sana`,publish:`Chop etish`,del:`O'chirish`,
+quiz_title:`Viktorina to'plamlari`,quiz_sub:`Har bir to‘plam 7 xil bosqichdan iborat: qizish, rasmlar, musiqa, aktyorlar, qahramonlar, iqtiboslar va bir soniyalik lavhalar. Filmlar, seriallar, TV-shoular va multfilmlar.`,new_collection:`Yangi to'plam`,coll_title:`To'plam nomi`,price:`Narxi (USD)`,correct:`To'g'ri javob`,wrong:`Noto'g'ri javob`,question:`Savol`,need_all:`Barcha savol va javoblarni to'ldiring.`,best:`Eng yaxshi`,
+next:`Keyingi`,finish:`Yakunlash`,score:`Natijangiz`,play_again:`Qayta o'ynash`,back:`To'plamlarga qaytish`,
+create_title:`Savol yaratish`,create_sub:`O'z savollaringizni yozing yoki adminlarga taklif qiling.`,need_login:`Davom etish uchun kiring.`,save_private:`O'zim uchun saqlash`,suggest:`Adminlarga taklif qilish`,my_questions:`Mening savollarim`,
+st_private:`Shaxsiy`,st_pending:`Ko'rib chiqilmoqda`,st_approved:`Tasdiqlangan`,st_rejected:`Rad etilgan`,inbox:`Ko'rib chiqiladigan takliflar`,inbox_empty:`Kutayotgan takliflar yo'q.`,approve:`Tasdiqlash`,reject:`Rad etish`,by:`muallif`,community:`Jamoa tanlovi`,empty_mine:`Siz hali savol yozmagansiz.`,
+theme_title:`Interfeys mavzusi`,theme_sub:`Istalgan rangni va yorug' yoki qorong'i rejimni tanlang.`,mode:`Rejim`,m_system:`Tizim`,m_light:`Yorug'`,m_dark:`Qorong'i`,accent:`Asosiy rang`,reset:`Asliga qaytarish`,
+support_title:`Yordam`,support_sub:`Telegramda bizga yozing.`,open_bot:`Telegram botni ochish`,bot_unset:`Bot havolasi hali qo'shilmagan.`,bot_link:`Telegram bot havolasi`,save:`Saqlash`,
+search_results:`Qidiruv natijalari`,no_results:`Hech narsa topilmadi.`,saved:`Saqlandi.`,added:`Qo'shildi.`,sent:`Adminlarga yuborildi.`,scene:`Sahna`,take:`Yangilik`,rt:`To'g'ri`,wr:`Xato`,admin_note:`Siz admin sifatida kirgansiz. Tashrifchilar takliflarini ko'rib chiqing.`,
+c_warmup:`Qizish bosqichi`,c_pictures:`Rasmli bosqich`,c_music_round:`Kino musiqasi`,c_actor_round:`Aktyorlar bo‘yicha`,c_characters:`Qahramonni toping`,c_quotes_round:`Iqtibosni toping`,c_one_second:`Bir soniyalik kino`,c_actors:`Aktyorlar`,c_directors:`Rejissyorlar`,c_quotes:`Iqtiboslar`,c_music:`Saundtreklar`,c_oscars:`Oskar`,c_franchises:`Franshizalar`,c_cult:`Kult filmlar`,
+nc_premieres:`Premyeralar`,nc_actors:`Aktyorlar`,nc_awards:`Mukofotlar`,nc_casting:`Kasting`,nc_festivals:`Festivallar`},
+ru:{tagline:`Киновикторины и новости кино`,nav_dashboard:`Панель`,nav_news:`Новости`,nav_quiz:`Викторина`,nav_create:`Студия викторин`,nav_profile:`Профиль`,nav_support:`Поддержка`,
+search_ph:`Поиск по новостям и викторинам`,login:`Войти`,logout:`Выйти`,signin:`Войти`,signup:`Создать аккаунт`,username:`Логин`,password:`Пароль`,
+login_err:`Неверный email или пароль.`,exists:`Этот логин занят.`,email_exists:`Аккаунт с таким email уже существует. Войдите.`,fill:`Заполните все поля.`,
+hello:`С возвращением`,hello_guest:`Добро пожаловать в KinoQuiz`,dash_sub:`Что сегодня в кино и викторина, которая вас ждёт.`,stat_news:`Новости`,stat_quiz:`Подборки`,stat_q:`Вопросы`,stat_best:`Лучший результат`,
+latest_news:`Последние новости`,featured:`Викторина дня`,see_all:`Все`,play:`Играть`,free:`Бесплатно`,paid:`Платно`,unlock:`Открыть`,pay_login:`Войдите, чтобы открыть`,unlock_note:`Только демо: реальная оплата не списывается.`,cats:`категорий`,qs:`вопросов`,
+news_title:`Новости кино`,news_sub:`Премьеры, актёры и награды.`,all:`Все`,sample:`Пример`,sources:`Источники новостей`,sources_note:`Для живых лент нужен небольшой сервер, который забирает данные из каждого источника. Ниже планируемые источники.`,not_connected:`Не подключён`,
+add_news:`Добавить новость`,headline:`Заголовок`,about:`О чём новость`,category:`Категория`,source:`Источник`,date:`Дата`,publish:`Опубликовать`,del:`Удалить`,
+quiz_title:`Подборки викторин`,quiz_sub:`В каждой подборке 7 разных раундов: разминка, картинки, музыка, актёры, персонажи, цитаты и ролики по одной секунде. Фильмы, сериалы, ТВ-шоу и мультфильмы.`,new_collection:`Новая подборка`,coll_title:`Название подборки`,price:`Цена (USD)`,correct:`Правильный ответ`,wrong:`Неправильный ответ`,question:`Вопрос`,need_all:`Заполните все вопросы и ответы.`,best:`Лучший`,
+next:`Дальше`,finish:`Завершить`,score:`Ваш результат`,play_again:`Играть снова`,back:`К подборкам`,
+create_title:`Создание вопросов`,create_sub:`Пишите свои вопросы или предлагайте их админам.`,need_login:`Войдите, чтобы продолжить.`,save_private:`Сохранить для себя`,suggest:`Предложить админам`,my_questions:`Мои вопросы`,
+st_private:`Личный`,st_pending:`На проверке`,st_approved:`Одобрен`,st_rejected:`Отклонён`,inbox:`Предложения на проверку`,inbox_empty:`Нет предложений на проверке.`,approve:`Одобрить`,reject:`Отклонить`,by:`автор`,community:`Выбор сообщества`,empty_mine:`Вы ещё не написали ни одного вопроса.`,
+theme_title:`Тема интерфейса`,theme_sub:`Выберите любой акцентный цвет и светлый или тёмный режим.`,mode:`Режим`,m_system:`Системный`,m_light:`Светлый`,m_dark:`Тёмный`,accent:`Акцентный цвет`,reset:`Сбросить`,
+support_title:`Поддержка`,support_sub:`Напишите нам в Telegram.`,open_bot:`Открыть Telegram-бота`,bot_unset:`Ссылка на бота ещё не добавлена.`,bot_link:`Ссылка на Telegram-бота`,save:`Сохранить`,
+search_results:`Результаты поиска`,no_results:`Ничего не найдено.`,saved:`Сохранено.`,added:`Добавлено.`,sent:`Отправлено админам.`,scene:`Сцена`,take:`Новости`,rt:`Верно`,wr:`Ошибка`,admin_note:`Вы вошли как админ. Проверяйте предложения посетителей.`,
+c_warmup:`Разминка`,c_pictures:`Раунд картинок`,c_music_round:`Музыка из фильмов`,c_actor_round:`Раунд актёров`,c_characters:`Угадай персонажа`,c_quotes_round:`Раунд цитат`,c_one_second:`Фильм за одну секунду`,c_actors:`Актёры`,c_directors:`Режиссёры`,c_quotes:`Цитаты`,c_music:`Саундтреки`,c_oscars:`Оскар`,c_franchises:`Франшизы`,c_cult:`Культовое кино`,
+nc_premieres:`Премьеры`,nc_actors:`Актёры`,nc_awards:`Награды`,nc_casting:`Кастинг`,nc_festivals:`Фестивали`}
+};
+var LOCALE={uz:'uz',en:'en-GB',ru:'ru'};
+var CATS=['warmup','pictures','music_round','actor_round','characters','quotes_round','one_second'];
+var NCATS=['premieres','actors','awards','casting','festivals'];
+
+/* ---------- seed data ---------- */
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
+function Q(cat,q,a,b,c,d){return{cat:cat,q:q,o:[a,b,c,d],a:0}}
+var SEED_NEWS=[];
+var SOURCES=[['Variety','https://variety.com'],['Deadline','https://deadline.com'],['The Hollywood Reporter','https://www.hollywoodreporter.com'],['IMDb News','https://www.imdb.com/news/'],['Screen Daily','https://www.screendaily.com']];
+var SEED_COLS=[]; // No preloaded questions or collections; admins create all quiz content.
+
+var ADMIN={u:'admin',p:'admin123'};
+var SWATCH=['#7657F6','#F0646A','#12A99A','#2878E8','#E39A2F','#D94F9D','#253B70'];
+var DEFAULT_ACCENT='#7657F6';
+
+/* ---------- state ---------- */
+var S={
+ lang:ld('lang','uz'), view:'dashboard', q:'', play:null, filter:'all',
+ session:FB_ON?null:ld('session',null),
+ news:ld('news',SEED_NEWS), cols:ld('cols',[]), qs:ld('qs',[]),
+ purchased:ld('purchased',{}), scores:ld('scores',{}), ranks:ld('ranks',[]), bot:ld('bot',''),
+ friends:ld('friends',[]), lobbyPlayers:ld('lobbyPlayers',[]), products:ld('products',[]), cart:ld('cart',[]), orders:ld('orders',[]),
+ theme:ld('theme',{mode:'system',accent:DEFAULT_ACCENT}),
+ profiles:ld('profiles',{}), tg:null, tgCode:null, forcePw:false,
+ auth:{mode:'signin'}
+};
+// Normalize stale or malformed saved values so one damaged browser record cannot blank the app.
+if(['uz','en','ru'].indexOf(S.lang)<0)S.lang='uz';
+['news','cols','qs','ranks','friends','lobbyPlayers','products','cart','orders'].forEach(function(k){if(!Array.isArray(S[k]))S[k]=[]});
+['purchased','scores'].forEach(function(k){if(!S[k]||typeof S[k]!=='object'||Array.isArray(S[k]))S[k]={}});
+if(!S.profiles||typeof S.profiles!=='object'||Array.isArray(S.profiles))S.profiles={};
+if(!S.theme||typeof S.theme!=='object')S.theme={mode:'system',accent:DEFAULT_ACCENT};
+if(['system','light','dark'].indexOf(S.theme.mode)<0)S.theme.mode='system';
+if(!/^#[0-9a-f]{6}$/i.test(S.theme.accent||''))S.theme.accent=DEFAULT_ACCENT;
+if(!S.lobbyPlayers.length){S.lobbyPlayers=[S.session?S.session.name:(ld('playerName','Player 1')||'Player 1')];sv('lobbyPlayers',S.lobbyPlayers)}
+// One-time v3 migration: remove old multiple-choice collections and rankings. Admin creates fresh content in the new free-answer format.
+try{if(localStorage.getItem('kq_admin_content_reset_v3')!=='done'){S.cols=[];S.qs=[];S.ranks=[];sv('cols',[]);sv('qs',[]);sv('ranks',[]);localStorage.setItem('kq_admin_content_reset_v3','done')}}catch(e){S.cols=[];S.qs=[];S.ranks=[]}
+// Remove demo news placeholders; only real admin-published items remain.
+S.news=S.news.filter(function(n){return n&&!n.sample});sv('news',S.news);
+var VIEWS_LIST=['dashboard','news','quiz','create','lobby','store','profile','support'];
+var SUPPORT_USER='KinoQuizofficial_bot';
+function t(k){var d=I18N[S.lang];return d&&d[k]!=null?d[k]:(I18N.en[k]!=null?I18N.en[k]:k)}
+function L(uz,ru,en){return S.lang==='uz'?uz:S.lang==='ru'?ru:en}
+function isAdmin(){return S.session&&S.session.role==='admin'}
+function kqFail(e){console.warn(e);toast(e&&e.code==='permission-denied'?L('Bu amal uchun ruxsat yo‘q.','Нет прав для этого действия.','You do not have permission for that.'):L('Serverga saqlab bo‘lmadi.','Не удалось сохранить на сервере.','Could not sync with the server.'))}
+function kqPush(k,v){
+ var api=kq();if(!api)return;
+ try{
+  if(k==='news'||k==='cols'||k==='products'){
+   if(!LOADED[k])return;
+   var rem=REMOTE[k],seen={};
+   v.forEach(function(it){
+    if(!it||!it.id)return;seen[it.id]=1;var js=stable(it);if(rem[it.id]===js)return;
+    if(isAdmin()){rem[it.id]=js;api.save(k,it).catch(kqFail)}
+    else if(k==='products'&&rem[it.id]){var old=JSON.parse(rem[it.id]);if(it.stock<old.stock){rem[it.id]=js;api.updateStock(it.id,it.stock).catch(kqFail)}}
+   });
+   if(isAdmin())Object.keys(rem).forEach(function(id){if(!seen[id]){delete rem[id];api.remove(k,id).catch(kqFail)}});
+  }else if(k==='ranks'||k==='orders'){
+   if(!S.session)return;
+   v.forEach(function(r){
+    if(!r||r.local)return;
+    if(!r.id)r.id=(k==='orders'?'o':'r')+(r.at||Date.now())+'_'+Math.random().toString(36).slice(2,6);
+    if(SENT[k+r.id])return;SENT[k+r.id]=1;api.save(k,r).catch(kqFail);
+   });
+  }else if((k==='scores'||k==='purchased')&&S.session&&S.session.uid){
+   var o={};o[k]=S[k][me()]||(k==='scores'?{}:[]);api.saveUser(o).catch(kqFail);
+  }else if(k==='profiles'&&S.session&&S.session.uid){api.saveUser({profile:S.profiles[me()]||{}}).catch(kqFail)
+  }else if(k==='bot'&&isAdmin()){api.setSetting({bot:v}).catch(kqFail)}
+ }catch(e){kqFail(e)}
+}
+/* Re-render after server data arrives, but never while someone is typing, creating, or mid-question. */
+function kqRefresh(){
+ var ae=document.activeElement,md=$('#modal');
+ var busy=(S.play&&!S.play.done)||S.view==='create'||(md&&!md.hidden)||(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)&&ae.id!=='searchbox'&&$('#main').contains(ae));
+ if(!busy){renderMain();renderRail()}
+}
+window.kqApp={
+ onData:function(kind,arr){
+  if(kind==='settings'){if(arr&&typeof arr.bot==='string'){S.bot=arr.bot;sv('bot',S.bot,true)}kqRefresh();return}
+  var map={};arr.forEach(function(it){map[it.id]=stable(it);if(kind==='ranks'||kind==='orders')SENT[kind+it.id]=1});
+  REMOTE[kind]=map;LOADED[kind]=true;S[kind]=arr;sv(kind,arr,true);kqRefresh();
+ },
+ onSession:function(s){
+  S.session=s;sv('session',s,true);
+  if(!s){S.orders=[];sv('orders',[],true);S.tg=null;S.tgCode=null;lastLoginPw='';if(S.forcePw){S.forcePw=false;closeModal(true)}}
+  if(s&&S.lobbyPlayers.length===1&&S.lobbyPlayers[0]==='Player 1'){S.lobbyPlayers=[s.name];sv('lobbyPlayers',S.lobbyPlayers,true)}
+  if(!s)LOADED.orders=false;
+  render();
+ },
+ onUserDoc:function(d){
+  var n=me();
+  if(d.scores)S.scores[n]=Object.assign({},S.scores[n]||{},d.scores);
+  if(Array.isArray(d.purchased)){var cur=S.purchased[n]||[];d.purchased.forEach(function(x){if(cur.indexOf(x)<0)cur.push(x)});S.purchased[n]=cur}
+  sv('scores',S.scores,true);sv('purchased',S.purchased,true);
+  if(d.profile&&typeof d.profile==='object'){S.profiles[n]=d.profile;sv('profiles',S.profiles,true)}
+  if(d.mustChange===true){if(!S.forcePw){S.forcePw=true;renderForcePwModal()}}else if(S.forcePw){S.forcePw=false;closeModal(true)}
+  kqRefresh();
+ },
+ onTgLink:function(d){var was=!!S.tg;S.tg=d;if(d){S.tgCode=null;if(!was&&S.tgWaiting)toast(L('Telegram ulandi ✅','Telegram подключён ✅','Telegram connected ✅'));S.tgWaiting=false}kqRefresh()},
+ onError:function(e){kqFail(e)}
+};
+function me(){return S.session?S.session.name:'guest'}
+function fmtDate(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString(LOCALE[S.lang],{day:'2-digit',month:'short',year:'numeric'})}catch(e){return iso}}
+
+function allCollections(){
+ var out=SEED_COLS.concat(S.cols);
+ var ap=S.qs.filter(function(x){return x.status==='approved'});
+ if(ap.length)out.push({id:'community',title:t('community'),paid:false,price:0,community:true,items:ap.map(function(x){return{cat:x.cat,q:x.q,o:x.o,a:0}})});
+ return out;
+}
+function colById(id){return allCollections().filter(function(c){return c.id===id})[0]}
+function canPlay(c){return !c.paid||isAdmin()||(S.session&&(S.purchased[me()]||[]).indexOf(c.id)>-1)}
+function bestFor(cid){var b=(S.scores[me()]||{})[cid];return b?Math.round(b.s/b.n*100):null}
+function bestAll(){var m=null;allCollections().forEach(function(c){var v=bestFor(c.id);if(v!==null&&(m===null||v>m))m=v});return m}
+
+function rankingView(){
+ var rows=(S.ranks||[]).slice().sort(function(a,b){return b.score-a.score||a.seconds-b.seconds||b.correct-a.correct}).slice(0,20);
+ var title=S.lang==='uz'?'Eng yaxshi natijalar':S.lang==='ru'?'Лучшие результаты':'Top rankings';
+ var sub=S.lang==='uz'?'Ball, to‘g‘ri javoblar va yakunlash vaqti bo‘yicha':S.lang==='ru'?'По баллам, правильным ответам и времени':'Ranked by score, correct answers and completion time';
+ return '<section class="card pad stack" style="gap:12px"><div><h2>🏆 '+title+'</h2><p class="muted" style="font-size:13px">'+sub+'</p></div>'+
+ (rows.length?'<div class="stack" style="gap:7px">'+rows.map(function(r,i){return '<div class="row between" style="padding:9px 10px;border:1px solid var(--line);border-radius:10px"><div class="row" style="gap:10px"><b style="width:25px">#'+(i+1)+'</b><div><b>'+esc(r.name)+'</b><div class="muted" style="font-size:12px">'+esc(r.title)+'</div></div></div><div style="text-align:right"><b>'+r.score+'/'+r.total+'</b><div class="muted" style="font-size:12px">'+r.correct+' correct · '+Math.floor(r.seconds/60)+'m '+(r.seconds%60)+'s</div></div></div>'}).join('')+'</div>':'<div class="empty">'+(S.lang==='uz'?'Hozircha natijalar yo‘q. Birinchi bo‘lib viktorinani yakunlang!':S.lang==='ru'?'Пока нет результатов. Станьте первым!':'No results yet. Be the first to finish a quiz!')+'</div>')+'</section>';
+}
+
+/* ---------- theme ---------- */
+function onColor(hex){var n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255;var f=function(v){v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};var L=.2126*f(r)+.7152*f(g)+.0722*f(b);return L>.4?'#14110A':'#FFFFFF'}
+function applyTheme(){
+ var r=document.documentElement;
+ if(S.theme.mode==='system')r.removeAttribute('data-theme');else r.setAttribute('data-theme',S.theme.mode);
+ r.style.setProperty('--accent',S.theme.accent||DEFAULT_ACCENT);
+ r.style.setProperty('--on-accent',onColor(S.theme.accent||DEFAULT_ACCENT));
+ r.lang=S.lang;
+}
+
+/* ---------- icons ---------- */
+var IC={
+ dashboard:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="5" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="11" width="7" height="9" rx="1"/>',
+ news:'<path d="M4 5h13v14H6a2 2 0 0 1-2-2V5zM17 8h3v9a2 2 0 0 1-2 2M8 9h5M8 13h5"/>',
+ quiz:'<path d="M4 9h16v10H4zM4 9l2.2-4.5h3.6L7.6 9M10 9l2.2-4.5h3.6L13.6 9M16 9l2.2-4.5H20"/>',
+ create:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 8v8M8 12h8"/>',
+ theme:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16" fill="currentColor" stroke="none"/>',
+ profile:'<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+ support:'<path d="M5 6h14v9h-8l-4 3v-3H5z"/>',
+ lobby:'<circle cx="9" cy="8" r="3"/><path d="M3 19v-1a6 6 0 0 1 12 0v1M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v1"/>',
+ store:'<path d="M4 8h16l-1 12H5L4 8zM3 8l2-5h14l2 5M9 8V3m6 5V3"/><path d="M9 13h6"/>',
+ search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>'
+};
+function icon(n,s){return '<svg width="'+(s||20)+'" height="'+(s||20)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(IC[n]||'')+'</svg>'}
+
+/* ---------- chrome ---------- */
+function navShort(v){var labels={uz:{dashboard:'Panel',news:'Yangilik',quiz:'Quiz',create:'Yaratish',lobby:'Do‘stlar',store:'Do‘kon',profile:'Profil',support:'Yordam'},en:{dashboard:'Home',news:'News',quiz:'Quiz',create:'Create',lobby:'Lobby',store:'Store',profile:'Profile',support:'Help'},ru:{dashboard:'Домой',news:'Новости',quiz:'Игра',create:'Создать',lobby:'Друзья',store:'Магазин',profile:'Профиль',support:'Помощь'}};return (labels[S.lang]||labels.en)[v]||t('nav_'+v)}
+function renderRail(){
+ var navViews=['profile'].concat(VIEWS_LIST.filter(function(v){if(v==='profile')return false;if(v==='create')return isAdmin();return true}));
+ $('#rail').innerHTML=railProfile()+
+ navViews.map(function(v){var isP=v==='profile';return '<button class="nav'+(isP?' nav-profile':'')+'" data-a="go" data-v="'+v+'" title="'+esc(t('nav_'+v))+'"'+(S.view===v&&!S.q?' aria-current="page"':'')+'>'+(isP?avatarHtml(26):icon(v))+'<span class="t" data-short="'+esc(navShort(v))+'">'+esc(t('nav_'+v))+'</span></button>'}).join('')+
+ '<div class="rail-foot"><div class="rail-brand"><span class="brand-mark">'+icon('quiz',14)+'</span>KinoQuiz</div><span>'+esc(t('tagline'))+'</span></div>';
+}
+function renderTop(){
+ var langs=['uz','en','ru'].map(function(l){return '<button data-a="lang" data-v="'+l+'" aria-pressed="'+(S.lang===l)+'">'+l.toUpperCase()+'</button>'}).join('');
+ var who=S.session?
+  '<div class="who"><span class="who-name">'+esc(S.session.name)+'</span><button class="btn sm" data-a="logout">'+esc(t('logout'))+'</button></div>':
+  '<div class="who"><button class="btn primary sm" data-a="openlogin">'+esc(t('login'))+'</button></div>';
+ var cur=$('#searchbox');var val=cur?cur.value:'';
+ $('#top').innerHTML='<div class="search">'+icon('search',16)+'<input id="searchbox" type="text" placeholder="'+esc(t('search_ph'))+'" aria-label="'+esc(t('search_ph'))+'" autocomplete="off"></div><div class="seg" role="group" aria-label="Language">'+langs+'</div>'+who;
+ $('#searchbox').value=val||S.q;
+}
+function render(){applyTheme();renderRail();renderTop();renderMain()}
+function renderMain(){
+ var v=S.q.trim()?'search':S.view;if(v==='create'&&!isAdmin())v='lobby';
+ try{var fxKey=v+(S.play?':'+S.play.cid+':'+S.play.i+':'+(S.play.done?'d':''):'');$('#main').innerHTML='<div class="wrap'+(fxKey!==fxLastKey?' enter':'')+'">'+(VIEWS[v]||VIEWS.dashboard)()+'</div>';fxLastKey=fxKey}
+ catch(err){console.error('KinoQuiz render error:',err);$('#main').innerHTML='<div class="wrap"><section class="card pad stack"><h1>KinoQuiz had a hiccup</h1><p class="muted">The page could not be displayed. Your saved quizzes have not been deleted.</p><button class="btn primary" data-a="go" data-v="dashboard">Reload dashboard</button></section></div>'}
+ fxTilt=null;
+}
+function toast(m){var el=$('#toast');el.textContent=m;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){el.classList.remove('show')},2200)}
+function go(v){S.view=v;S.q='';S.play=null;var sb=$('#searchbox');if(sb)sb.value='';if(location.hash.slice(1)!==v)location.hash=v;render();window.scrollTo(0,0)}
+
+/* ---------- view pieces ---------- */
+function newsRow(n){
+ return '<article class="news-item"><div class="when">'+esc(fmtDate(n.date))+'<span>'+esc(t('nc_'+n.cat))+'</span></div><div><h3>'+esc(n.title)+'</h3><p class="muted">'+esc(n.about)+'</p><div class="meta">'+
+ '<span>'+esc(t('source'))+': '+esc(n.source)+'</span>'+(n.sample?'<span class="badge">'+esc(t('sample'))+'</span>':'')+(safeUrl(n.url)?'<a href="'+esc(safeUrl(n.url))+'" target="_blank" rel="noopener noreferrer">Read story ↗</a>':'')+
+ (isAdmin()?'<button class="btn sm danger" data-a="delnews" data-id="'+esc(n.id)+'">'+esc(t('del'))+'</button>':'')+'</div></div></article>';
+}
+function sortedNews(){return S.news.slice().sort(function(a,b){return b.date.localeCompare(a.date)})}
+function collCard(c){
+ if(!c||!Array.isArray(c.items))return '<article class="card pad empty">No quiz published yet.</article>';
+ var bst=bestFor(c.id);var ok=canPlay(c);
+ var act;
+ if(ok)act='<button class="btn primary" data-a="startplay" data-id="'+esc(c.id)+'">'+esc(t('play'))+'</button>';
+ else if(!S.session)act='<button class="btn" data-a="openlogin">'+esc(t('pay_login'))+'</button>';
+ else act='<button class="btn" data-a="unlock" data-id="'+esc(c.id)+'">'+esc(t('unlock'))+' · $'+Number(c.price).toFixed(2)+'</button>';
+ var cats={};c.items.forEach(function(i){cats[i.cat]=1});
+ return '<article class="card qcard"><div class="film"></div><div class="pad"><div class="row between"><span class="badge '+(c.paid?'paid':'free')+'">'+esc(c.paid?t('paid')+' · $'+Number(c.price).toFixed(2):t('free'))+'</span>'+(bst!==null?'<span class="muted" style="font-size:13px">'+esc(t('best'))+' '+bst+'%</span>':'')+'</div>'+
+ '<h3>'+esc(c.title)+'</h3><div class="seven" aria-hidden="true">'+CATS.map(function(){return '<i></i>'}).join('')+'</div>'+
+ '<p class="muted" style="font-size:13px">7 rounds · '+c.items.length+' '+esc(t('qs'))+'</p>'+
+ '<div class="row">'+act+(isAdmin()&&c.id&&!c.seed&&!c.community?'<button class="btn sm danger" data-a="delcol" data-id="'+esc(c.id)+'">'+esc(t('del'))+'</button>':'')+'</div></div></article>';
+}
+function catSelect(id){return '<select id="'+id+'" name="cat">'+CATS.map(function(c,i){return '<option value="'+i+'">'+esc(t('c_'+c))+'</option>'}).join('')+'</select>'}
+function mediaSlot(i,j,slot,label){
+ var uz=S.lang==='uz',ru=S.lang==='ru',urlName='media'+i+'_'+j+'_'+slot,fileName='upload'+i+'_'+j+'_'+slot;
+ return '<div class="media-slot" data-slot="'+slot+'"><b>'+label+'</b><label>'+(uz?'Havola (URL), shu jumladan YouTube':ru?'Ссылка (URL), включая YouTube':'Media link (URL), including YouTube')+'<input type="url" name="'+urlName+'" placeholder="https://..." inputmode="url"></label><label>'+(uz?'Yoki fayl yuklang':ru?'Или загрузите файл':'Or upload a file')+'<input type="file" name="'+fileName+'" accept="image/*,video/*,audio/*"></label><p class="media-help">'+(uz?'Rasm, video yoki audio. Havola va faylni bir vaqtda tanlamang.':ru?'Изображение, видео или аудио. Не выбирайте ссылку и файл одновременно.':'Image, video or audio. Choose either a link or an uploaded file, not both.')+'</p></div>';
+}
+function roundQuestion(i,j){
+ var uz=S.lang==='uz',ru=S.lang==='ru';
+ var prompts=uz?['Tezkor savolni yozing.','Rasmga qarab nomni topish uchun savol yozing.','Musiqaga qarab nomni topish uchun savol yozing.','Kamida 3 ta media orqali aktyorlar va asarni topish savolini yozing.','Tavsif va media ishorasi yordamida qahramonni topish savolini yozing.','Iqtibosni kiriting va qaysi asardan ekanini so‘rang.','Bir soniyalik lavha orqali asarni topish savolini yozing.']:ru?['Напишите короткий вопрос.','Спросите, что изображено на постере или сцене.','Спросите, из какого проекта эта музыка.','Добавьте минимум 3 медиа-подсказки с актёрами.','Добавьте описание персонажа и медиа-подсказку.','Добавьте цитату и спросите, откуда она.','Добавьте видео. Игрок увидит только первую секунду.']:['Ask a quick opening question.','Ask players to identify the title from the image.','Ask players to identify the title from its music.','Add at least 3 media clues featuring the actors.','Describe the character and optionally add a media clue.','Enter a memorable quote and ask where it comes from.','Add a video clip. Players will see only its first second.'];
+ var remove=uz?'Olib tashlash':(ru?'Удалить':'Remove'),qlabel=uz?'Savol / ishora':(ru?'Вопрос / подсказка':'Question / clue'),alabel=uz?'Bitta to‘g‘ri javob':(ru?'Один правильный ответ':'Correct answer');
+ var answerHint=i===3?(uz?'Film yoki serial nomi':ru?'Название фильма или сериала':'Movie / show title'):i===4?(uz?'Qahramon ismi':ru?'Имя персонажа':'Character name'):(uz?'Javobni kiriting':ru?'Введите ответ':'Enter the answer');
+ var media='';
+ if(i===3){media='<div class="media-slots"><p class="media-help">'+(uz?'4-bosqich: har bir savol uchun kamida 3 ta media majburiy. YouTube havolalari ichki playerda ochiladi.':ru?'Раунд 4: для каждого вопроса обязательно минимум 3 медиа. Ссылки YouTube откроются во встроенном плеере.':'Round 4: every question requires at least 3 media clues. YouTube links open in the built-in player.')+'</p>'+mediaSlot(i,j,0,(uz?'Media 1':ru?'Медиа 1':'Media 1'))+mediaSlot(i,j,1,(uz?'Media 2':ru?'Медиа 2':'Media 2'))+mediaSlot(i,j,2,(uz?'Media 3':ru?'Медиа 3':'Media 3'))+'</div><button class="add-media-slot" type="button" data-a="addactorslot" data-v="'+j+'">＋ '+(uz?'Yana media qo‘shish':ru?'Добавить ещё медиа':'Add another media clue')+'</button>'}
+ else if(i===4){media='<div class="media-slots"><p class="media-help">'+(uz?'5-bosqich: xohlasangiz rasm, video yoki audio yuklang yoki YouTube / boshqa media havolasini kiriting.':ru?'Раунд 5: загрузите изображение, видео или аудио либо добавьте ссылку YouTube или другую медиа-ссылку.':'Round 5: upload an image, video or audio file, or add a YouTube / other media link.')+'</p>'+mediaSlot(i,j,0,(uz?'Qahramon mediası (ixtiyoriy)':ru?'Медиа персонажа (необязательно)':'Character media (optional)'))+'</div>'}
+ else if(i===1||i===2||i===6){
+  var ml=i===1?(uz?'Poster / sahna rasmi URL':ru?'URL постера или кадра':'Poster / scene image URL'):(i===2?(uz?'YouTube yoki Spotify havolasi (yoki audio fayl URL)':ru?'Ссылка YouTube или Spotify (или URL аудиофайла)':'YouTube or Spotify link (or direct audio file URL)'):(uz?'Video URL (YouTube yoki MP4; faqat 1 soniya)':ru?'Ссылка на видео (YouTube или MP4; только 1 секунда)':'Video URL (YouTube or MP4; only 1 second)'));
+  var ph=i===2?'https://youtu.be/...  or  https://open.spotify.com/track/...':(i===6?'https://youtu.be/...  or  https://...mp4':'https://...');
+  media='<label class="media-field">'+ml+'<input type="url" name="media'+i+'_'+j+'" placeholder="'+ph+'" '+(i===1||i===2||i===6?'required':'')+'></label>'+(i===2?'<p class="media-help">'+(uz?'YouTube va Spotify player savol ichida ko‘rinadi. Spotify track, album yoki playlist havolasini qo‘ying.':ru?'Проигрыватель YouTube и Spotify появится прямо в вопросе. Вставьте ссылку на трек, альбом или плейлист Spotify.':'YouTube and Spotify players appear inside the question. Paste a Spotify track, album or playlist link.')+'</p>':(i===6?'<p class="media-help">'+(uz?'YouTube havolasi ham qo‘llanadi. Video player savol ichida ochiladi va 1 soniyadan keyin to‘xtaydi.':ru?'Поддерживается ссылка YouTube. Видео откроется прямо в вопросе и остановится через 1 секунду.':'YouTube links are supported. The video opens inside the question and stops after one second.')+'</p>':''));
+ }
+ return '<div class="round-question"><div class="row between"><h4>'+(uz?'SAVOL':ru?'ВОПРОС':'QUESTION')+' '+String(j+1).padStart(2,'0')+'</h4><button class="btn sm danger" type="button" data-a="removeroundq" data-v="'+i+'" aria-label="'+remove+'">'+remove+'</button></div><label>'+qlabel+'<textarea name="q'+i+'_'+j+'" placeholder="'+prompts[i]+'" required></textarea></label>'+media+'<label>'+alabel+'<input type="text" name="answer'+i+'_'+j+'" placeholder="'+answerHint+'" required></label><p class="media-help">'+(uz?'Muqobil javoblar uchun | belgisidan foydalaning, masalan: Garri Potter | Harry Potter':ru?'Для альтернативных ответов используйте |, например: Гарри Поттер | Harry Potter':'Accept alternatives with | , e.g. Spider-Man | Spiderman. Small typos in long titles are forgiven.')+'</p></div>';
+}
+function renumberRound(box,ri){Array.prototype.forEach.call(box.querySelectorAll('.round-question'),function(card,j){var h4=card.querySelector('h4');h4.textContent=h4.textContent.replace(/\d+\s*$/,String(j+1).padStart(2,'0'));card.querySelectorAll('[name]').forEach(function(el){var m=el.name.match(new RegExp('^(q|media|upload|answer)'+ri+'_\\d+(?:_(\\d+))?$'));if(m)el.name=m[1]+ri+'_'+j+(m[2]!==undefined?'_'+m[2]:'')});var add=card.querySelector('[data-a=addactorslot]');if(add)add.dataset.v=String(j)})}
+
+function supportHandle(raw){var v=String(raw||SUPPORT_USER).trim().replace(/^@/,'');var m=v.match(/(?:https?:\/\/)?(?:www\.)?t\.me\/([A-Za-z0-9_]+)/i);if(m)v=m[1];return /^[A-Za-z0-9_]{5,32}$/.test(v)?v:SUPPORT_USER}
+function telegramAppUrl(text){var h=supportHandle(S.bot||SUPPORT_USER);return 'tg://resolve?domain='+h+(text?'&text='+encodeURIComponent(text):'')}
+
+var VIEWS={
+ dashboard:function(){
+  var n=sortedNews().slice(0,3);
+  var cols=allCollections();
+  var ranks=(S.ranks||[]).slice().sort(function(a,b){return b.score-a.score||a.seconds-b.seconds}).slice(0,5);
+  var uz=S.lang==='uz',ru=S.lang==='ru';
+  var heroTitle=isAdmin()?(uz?'Kino kechasini yarating':ru?'Создайте свой кино-вечер':'Build your next movie night'):(uz?'Ekranni qanchalik yaxshi bilasiz?':ru?'Насколько хорошо вы знаете экран?':'How well do you know the screen?');
+  var heroText=uz?'Bitta to‘plam ichida 7 bosqich: filmlar, seriallar, TV-shoular va multfilmlar.':ru?'7 раундов в одной подборке: фильмы, сериалы, ТВ-шоу и мультфильмы.':'Seven rounds in one collection, covering films, TV shows, series and cartoons.';
+  var primary=isAdmin()?(uz?'Viktorina yaratish':ru?'Создать викторину':'Create a collection'):(uz?'Viktorinalarni ko‘rish':ru?'Смотреть подборки':'Explore collections');
+  var collectionBlock=cols.length?'<div class="dashboard-collections">'+cols.slice(0,4).map(collCard).join('')+'</div>':'<section class="empty-studio card"><div class="empty-studio-mark">🎬</div><div><h3>'+(uz?'Hali to‘plam yaratilmagan':ru?'Подборок пока нет':'No collections yet')+'</h3><p class="muted">'+(uz?'Admin bitta to‘plam yaratib, uning ichida 7 bosqichni to‘ldiradi.':ru?'Администратор создаст одну подборку и заполнит в ней все 7 раундов.':'The admin creates one collection containing all seven rounds.')+'</p></div><button class="btn primary" data-a="go" data-v="'+(isAdmin()?'create':'quiz')+'">'+(isAdmin()?primary:(uz?'Ko‘rish':ru?'Открыть':'Explore'))+'</button></section>';
+  var rankingRows=ranks.length?ranks.map(function(r,i){return '<div class="rank-line"><span class="rank-no">'+(i+1<4?['🥇','🥈','🥉'][i]:'#'+(i+1))+'</span><span class="rank-player"><b>'+esc(r.name)+'</b><small>'+esc(r.title)+'</small></span><span class="rank-score"><b>'+r.score+'/'+r.total+'</b><small>'+Math.floor(r.seconds/60)+':'+String(r.seconds%60).padStart(2,'0')+'</small></span></div>'}).join(''):'<div class="rank-empty">'+(uz?'Birinchi natijani siz yozing.':ru?'Станьте первым в рейтинге.':'Be the first name on the leaderboard.')+'</div>';
+  var rankTitle=uz?'Eng yaxshi natijalar':ru?'Лучшие результаты':'Hall of fame';
+  var newsContent=n.length?n.map(newsRow).join(''):'<div class="empty">'+(uz?'Hozircha yangilik yo‘q. Admin yangilik qo‘shishi mumkin.':ru?'Новостей пока нет. Администратор может добавить публикацию.':'No news published yet. The admin can add the latest stories.')+'</div>';
+  var newsBlock='<section class="dash-news card"><div class="section-top"><div><span class="eyebrow">'+(uz?'SO‘NGGI':ru?'ПОСЛЕДНЕЕ':'LATEST')+'</span><h2>'+(uz?'Kino yangiliklari':ru?'Новости кино':'Screen news')+'</h2></div><div class="row"><button class="btn sm" data-a="go" data-v="news">'+(uz?'Barcha yangiliklar':ru?'Все новости':'All news')+'</button>'+(isAdmin()?'<button class="btn sm primary" data-a="go" data-v="news">＋ '+(uz?'Yangilik qo‘shish':ru?'Добавить новость':'Add news')+'</button>':'')+'</div></div>'+newsContent+'</section>';
+  return '<div class="dashboard-flow"><section class="dashboard-hero"><div class="hero-copy"><span class="hero-kicker"><i></i> KINOQUIZ · '+(uz?'EKRAN OLAMI':ru?'МИР ЭКРАНА':'THE SCREEN UNIVERSE')+'</span><h1>'+heroTitle+'</h1><p>'+heroText+'</p><div class="hero-actions"><button class="btn hero-btn" data-a="go" data-v="'+(isAdmin()?'create':'quiz')+'">'+primary+' <span>↗</span></button><span class="hero-note">7 ROUNDS · ONE COLLECTION · ALL SCREEN WORLDS</span></div></div><div class="hero-art" id="heroart"><div class="ring3d" aria-hidden="true"><div class="ring-spin">'+ringHtml()+'</div></div><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-ticket"><div class="ticket-top"><span>THE</span><b>SCREEN</b><span>EXPERIENCE</span></div><div class="ticket-center"><div class="ticket-play">▶</div><span>KQ</span></div><div class="ticket-bottom"><span>7 ROUNDS</span><span>★★★★★</span></div></div><div class="art-spark spark-a">✦</div><div class="art-spark spark-b">✧</div><div class="art-dot"></div></div></section>'+
+  '<section class="dashboard-lower"><div class="collection-panel"><div class="section-top"><div><span class="eyebrow">'+(uz?'O‘YINLAR':ru?'ИГРЫ':'PLAYLISTS')+'</span><h2>'+(uz?'Viktorina to‘plamlari':ru?'Подборки викторин':'Quiz collections')+'</h2><p class="muted" style="font-size:12px;margin-top:5px">'+(uz?'Har bir to‘plam ichida 7 bosqich mavjud.':ru?'В каждой подборке есть 7 раундов.':'Every collection includes all seven rounds.')+'</p></div><button class="btn sm" data-a="go" data-v="quiz">'+(uz?'Barchasi':ru?'Все':'All collections')+'</button></div>'+collectionBlock+'</div><section class="leaderboard-card"><div class="leader-head"><span class="trophy">🏆</span><div><span class="eyebrow">'+(uz?'REYTING':ru?'РЕЙТИНГ':'LEADERBOARD')+'</span><h2>'+rankTitle+'</h2></div></div><p class="leader-sub">'+(uz?'Ball, to‘g‘ri javoblar va yakunlash vaqti bo‘yicha':ru?'По баллам, правильным ответам и времени':'Sorted by score, correct answers and finish time')+'</p><div class="rank-list">'+rankingRows+'</div><button class="leader-link" data-a="go" data-v="quiz">'+(uz?'Viktorinalarga o‘tish':ru?'К викторинам':'Discover collections')+' ↗</button></section></section>'+newsBlock+'</div>';
+ },
+ news:function(){
+  var list=sortedNews().filter(function(n){return S.filter==='all'||n.cat===S.filter});
+  var chips='<div class="chips"><button class="chip" data-a="nfilter" data-v="all" aria-pressed="'+(S.filter==='all')+'">'+esc(t('all'))+'</button>'+NCATS.map(function(c){return '<button class="chip" data-a="nfilter" data-v="'+c+'" aria-pressed="'+(S.filter===c)+'">'+esc(t('nc_'+c))+'</button>'}).join('')+'</div>';
+  var add=isAdmin()?'<details class="card"><summary>'+esc(t('add_news'))+'</summary><div class="inner"><form class="form" data-form="news"><label>'+esc(t('headline'))+'<input type="text" name="title" required></label><label>'+esc(t('about'))+'<textarea name="about" required></textarea></label><div class="two"><label>'+esc(t('category'))+'<select name="cat">'+NCATS.map(function(c){return '<option value="'+c+'">'+esc(t('nc_'+c))+'</option>'}).join('')+'</select></label><label>'+esc(t('date'))+'<input type="date" name="date" value="'+daysAgo(0)+'" required></label></div><label>'+esc(t('source'))+'<input type="text" name="source" required></label><label>Article URL (optional)<input type="url" name="url" placeholder="https://..."></label><div><button class="btn primary" type="submit">'+esc(t('publish'))+'</button></div></form></div></details>':'';
+  var src='<section class="card pad stack" style="gap:10px"><h2>'+esc(t('sources'))+'</h2><p class="muted" style="font-size:13px">'+esc(t('sources_note'))+'</p><div class="chips">'+SOURCES.map(function(s){return '<a class="chip" style="text-decoration:none" href="'+s[1]+'" target="_blank" rel="noopener">'+esc(s[0])+' · '+esc(t('not_connected'))+'</a>'}).join('')+'</div></section>';
+  return '<div class="stack"><div class="head"><h1>'+esc(t('news_title'))+'</h1><p class="muted">'+esc(t('news_sub'))+'</p></div>'+chips+add+'<div class="card">'+(list.length?list.map(newsRow).join(''):'<div class="empty">'+esc(t('no_results'))+'</div>')+'</div>'+src+'</div>';
+ },
+ quiz:function(){
+  if(S.play)return playView();
+  var cols=allCollections();
+  return '<div class="stack"><div class="head"><span class="eyebrow">KINOQUIZ COLLECTIONS</span><h1>'+esc(t('quiz_title'))+'</h1><p class="muted">'+esc(t('quiz_sub'))+'</p></div>'+(isAdmin()?'<section class="admin-callout"><div><b>'+(S.lang==='uz'?'Yangi viktorina tayyormi?':S.lang==='ru'?'Готовы создать новую викторину?':'Ready to build a new quiz?')+'</b><p>'+(S.lang==='uz'?'Admin studiyasida 7 bosqichni sozlang.':S.lang==='ru'?'Настройте все 7 раундов в студии администратора.':'Set up all seven rounds in the admin studio.')+'</p></div><button class="btn primary" data-a="go" data-v="create">'+esc(t('new_collection'))+' ↗</button></section>':'')+'<div class="cards">'+(cols.length?cols.map(collCard).join(''):'<div class="empty-studio card"><div class="empty-studio-mark">🎬</div><div><h3>'+(S.lang==='uz'?'Viktorinalar tez orada':S.lang==='ru'?'Викторины скоро появятся':'Quiz collections are on their way')+'</h3><p class="muted">'+(S.lang==='uz'?'Admin birinchi to‘plamni yaratgach, bu yerda ko‘rinadi.':S.lang==='ru'?'Здесь появятся подборки после публикации администратором.':'Collections will appear here after the admin publishes them.')+'</p></div></div>')+'</div></div>';
+ },
+ create:function(){
+  if(!isAdmin())return VIEWS.lobby();
+  var builder='<form class="form studio-form" data-form="col"><section class="studio-basics card pad"><div class="studio-step"><span>START HERE</span><b>01</b></div><div class="two"><label>'+esc(t('coll_title'))+'<input type="text" name="title" placeholder="e.g. Friday Night Challenge" required></label><label>'+esc(t('price'))+'<input type="number" name="price" min="0" step="0.01" value="0"></label></div><p class="muted small-note">'+(S.lang==='uz'?'0 — bepul viktorina.':S.lang==='ru'?'0 — бесплатная викторина.':'Set price to 0 for a free collection. All seven rounds stay together inside it.')+'</p></section>'+
+  '<div class="studio-rounds-head"><div><span class="eyebrow">'+(S.lang==='uz'?'YARATISH MAYDONI':S.lang==='ru'?'РАБОЧАЯ ЗОНА':'THE CREATOR WORKSPACE')+'</span><h2>'+(S.lang==='uz'?'7 bosqichni to‘ldiring':S.lang==='ru'?'Заполните 7 раундов':'Build the seven rounds')+'</h2><p class="muted">'+(S.lang==='uz'?'Har bir bosqichga bir yoki undan ko‘p savol qo‘shing.':S.lang==='ru'?'Добавьте один или несколько вопросов в каждый раунд.':'One collection contains all seven rounds. Add questions inside each round.')+'</p></div><span class="round-count">07 <small>ROUNDS</small></span></div>'+
+  '<div class="studio-round-grid">'+CATS.map(function(c,i){var captions=S.lang==='uz'?['Tezkor umumiy savollar','Poster yoki sahnani rasm orqali topish','Film, serial yoki multfilm musiqasini aniqlash','Berilgan aktyorlar ishtirok etgan asarni topish','Tavsif va ishoralardan qahramonni topish','Iqtibos qaysi asardan ekanini topish','Bir soniyalik videodan asarni aniqlash']:S.lang==='ru'?['Быстрые общие вопросы','Узнать по постеру или сцене','Определить по музыке','Найти проект с указанными актёрами','Угадать персонажа по описанию','Узнать произведение по цитате','Определить по секундному видео']:['Fast general knowledge','Identify a poster or scene','Recognize the soundtrack','Find a title from its cast','Guess from character clues','Identify a famous quote','Name it from a one-second clip'];var colors=['#F4B942','#F06B86','#8B6CF6','#35A8A0','#4E8FE8','#E28A45','#D65FA4'];var glyphs=['✦','▧','♫','✧','◈','❝','▶'];return '<fieldset class="studio-round" data-round="'+i+'" style="--tile:'+colors[i]+'"><legend><span class="studio-round-no">0'+(i+1)+'</span><span>'+esc(t('c_'+c))+'</span></legend><div class="studio-round-intro"><span class="studio-glyph">'+glyphs[i]+'</span><p>'+captions[i]+'</p></div><div class="round-questions" id="round-questions-'+i+'">'+roundQuestion(i,0)+'</div><button class="add-question" type="button" data-a="addroundq" data-v="'+i+'"><span>＋</span> '+(S.lang==='uz'?'Savol qo‘shish':S.lang==='ru'?'Добавить вопрос':'Add another question')+'</button></fieldset>'}).join('')+'</div>'+
+  '<div class="studio-submit card pad"><div><b>'+(S.lang==='uz'?'Nashrga tayyormi?':S.lang==='ru'?'Готовы опубликовать?':'Ready to publish?')+'</b><p class="muted">'+(S.lang==='uz'?'Barcha 7 bosqichda kamida bittadan savol bo‘lishi kerak.':S.lang==='ru'?'В каждом из 7 раундов должен быть хотя бы один вопрос.':'Each round needs at least one question and one correct answer before publishing.')+'</p></div><div class="submit-actions"><p class="err" id="colerr"></p><button class="btn primary publish-btn" type="submit">'+(S.lang==='uz'?'Viktorinani nashr qilish':S.lang==='ru'?'Опубликовать викторину':'Publish quiz')+' <span>↗</span></button></div></div></form>';
+  var pend=S.qs.filter(function(x){return x.status==='pending'});
+  var review=pend.length?'<section class="review-strip card pad"><h2>'+(S.lang==='uz'?'Kutilayotgan takliflar':S.lang==='ru'?'Ожидающие предложения':'Pending suggestions')+'</h2>'+pend.map(function(x){return '<div class="row between"><b>'+esc(x.q)+'</b><div class="row"><button class="btn sm" data-a="approve" data-id="'+esc(x.id)+'">'+esc(t('approve'))+'</button><button class="btn sm danger" data-a="reject" data-id="'+esc(x.id)+'">'+esc(t('reject'))+'</button></div></div>'}).join('')+'</section>':'';
+  return '<div class="studio-page"><div class="studio-heading"><div><span class="eyebrow">KINOQUIZ · ADMIN WORKSPACE</span><h1>'+(S.lang==='uz'?'Viktorina yaratish':S.lang==='ru'?'Создать викторину':'Create a quiz')+'</h1><p class="muted">'+(S.lang==='uz'?'G‘oyangizni yetti bosqichli interaktiv o‘yinga aylantiring.':S.lang==='ru'?'Превратите свою идею в интерактивную игру из семи раундов.':'Turn your idea into a seven-round interactive experience.')+'</p></div><div class="studio-badge"><span>✦</span> ADMIN STUDIO</div></div>'+builder+review+'</div>';
+ },
+ lobby:function(){
+  var uz=S.lang==='uz',ru=S.lang==='ru';
+  var collections=allCollections().filter(canPlay);
+  var defaultName=S.session?S.session.name:(ld('playerName','Player 1')||'Player 1');
+  var players=S.lobbyPlayers.slice();
+  if(defaultName&&!players.some(function(n){return n.toLowerCase()===defaultName.toLowerCase()}))players.unshift(defaultName);
+  if(!players.length)players=['Player 1'];
+  var friendRows=S.friends.length?S.friends.map(function(n){var added=players.some(function(x){return x.toLowerCase()===n.toLowerCase()});return '<div class="friend-row"><span class="friend-avatar">'+esc(n.slice(0,1).toUpperCase())+'</span><b>'+esc(n)+'</b><span class="spacer"></span><button class="btn sm" data-a="addfriendtostage" data-v="'+esc(n)+'" '+(added?'disabled':'')+'>'+(added?(uz?'Qo‘shilgan':ru?'Добавлен':'Added'):(uz?'Lobbiga qo‘shish':ru?'В лобби':'Add to lobby'))+'</button><button class="btn sm danger" data-a="removefriend" data-v="'+esc(n)+'" aria-label="Remove friend">×</button></div>'}).join(''):'<p class="muted">'+(uz?'Hozircha do‘stlar yo‘q. Ism qo‘shib boshlang.':ru?'Пока нет друзей. Добавьте имя.':'No friends added yet. Add a name to get started.')+'</p>';
+  var playerRows=players.map(function(n,i){return '<div class="player-pill"><span>'+((i===0)?'👑':'🎬')+'</span><b>'+esc(n)+'</b><button type="button" data-a="removeplayer" data-v="'+esc(n)+'" aria-label="Remove player">×</button></div>'}).join('');
+  var opts=collections.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.title)+'</option>'}).join('');
+  return '<div class="stack lobby-page"><div class="head"><span class="eyebrow">KINOQUIZ PARTY MODE</span><h1>'+(uz?'Do‘stlar bilan o‘ynang':ru?'Играйте с друзьями':'Play together')+'</h1><p class="muted">'+(uz?'Do‘stlaringizni qo‘shing, to‘plamni tanlang va navbatma-navbat javob bering.':ru?'Добавьте друзей, выберите подборку и отвечайте по очереди.':'Add friends, choose a collection and take turns answering each question.')+'</p></div>'+
+  '<div class="lobby-grid"><section class="card pad stack"><div><span class="eyebrow">01 · '+(uz?'DO‘STLAR':'FRIENDS')+'</span><h2>'+(uz?'Do‘stlar ro‘yxati':ru?'Список друзей':'Your friends')+'</h2></div><form class="row" data-form="friend"><input type="text" name="friend" placeholder="'+(uz?'Do‘st ismini kiriting':ru?'Введите имя друга':'Enter a friend name')+'" required><button class="btn primary" type="submit">＋ '+(uz?'Qo‘shish':ru?'Добавить':'Add')+'</button></form><div class="friend-list">'+friendRows+'</div></section>'+
+  '<section class="card pad stack"><div><span class="eyebrow">02 · '+(uz?'O‘YIN XONASI':'GAME ROOM')+'</span><h2>'+(uz?'O‘yinchilar':ru?'Игроки':'Players in this room')+'</h2></div><div class="player-pills">'+playerRows+'</div><label>'+(uz?'O‘yinchi nomini saqlash':ru?'Ваше имя игрока':'Your player name')+'<input id="player-name" type="text" value="'+esc(defaultName)+'" placeholder="'+(uz?'Ismingiz':ru?'Ваше имя':'Your name')+'"></label><label>'+(uz?'Viktorina to‘plami':ru?'Подборка викторин':'Quiz collection')+'<select id="lobby-collection">'+opts+'</select></label><button class="btn primary" data-a="startlobby" '+(collections.length&&players.length>1?'':'disabled')+'>'+(uz?'Xonani yaratish va boshlash':ru?'Создать комнату и начать':'Create room & start')+' ↗</button>'+
+  '<p class="small-note muted">'+(uz?'Hozircha bu qurilmada navbat bilan o‘ynash rejimi. Turli telefonlarda onlayn sinxronlash uchun umumiy backend ulanishi kerak.':ru?'Пока это режим игры по очереди на одном устройстве. Для синхронизации между телефонами нужен общий сервер.':'This version supports pass-and-play on one device. Cross-device live rooms need a shared real-time backend.')+'</p></section></div></div>';
+ },
+ store:function(){
+  var uz=S.lang==='uz',ru=S.lang==='ru';
+  var products=S.products.slice().sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0)});
+  var count=S.cart.reduce(function(n,x){return n+x.qty},0),total=S.cart.reduce(function(n,x){var p=S.products.filter(function(z){return z.id===x.id})[0];return n+(p?p.price*x.qty:0)},0);
+  var productCards=products.map(function(p){return '<article class="card store-product"><div class="store-product-image">'+(p.image?'<img src="'+esc(p.image)+'" alt="'+esc(p.name)+'" loading="lazy">':'<span>✦</span>')+'</div><div class="pad stack" style="gap:9px"><div class="row between"><span class="badge free">'+(p.stock>0?(uz?'Mavjud':ru?'В наличии':'In stock'):(uz?'Tugagan':ru?'Нет в наличии':'Sold out'))+'</span><b class="store-price">$'+Number(p.price).toFixed(2)+'</b></div><h3>'+esc(p.name)+'</h3><p class="muted store-desc">'+esc(p.description||'')+'</p><div class="row between"><span class="muted small-note">'+(uz?'Qoldiq: ':'Stock: ')+Number(p.stock||0)+'</span><button class="btn primary sm" data-a="cartadd" data-id="'+esc(p.id)+'" '+(p.stock>0?'':'disabled')+'>'+(uz?'Savatga':ru?'В корзину':'Add to cart')+'</button></div>'+(isAdmin()?'<button class="btn sm danger" data-a="deleteproduct" data-id="'+esc(p.id)+'">'+(uz?'O‘chirish':ru?'Удалить':'Remove product')+'</button>':'')+'</div></article>'}).join('');
+  var adminForm=isAdmin()?'<details class="card"><summary>'+(uz?'＋ Yangi mahsulot qo‘shish':ru?'＋ Добавить товар':'＋ Add a product')+'</summary><div class="inner"><form class="form" data-form="product"><label>'+(uz?'Mahsulot nomi':ru?'Название товара':'Product name')+'<input type="text" name="name" required></label><label>'+(uz?'Tavsif':ru?'Описание':'Description')+'<textarea name="description"></textarea></label><div class="two"><label>'+(uz?'Narx (USD)':ru?'Цена (USD)':'Price (USD)')+'<input type="number" name="price" min="0" step="0.01" required></label><label>'+(uz?'Ombordagi soni':ru?'Количество':'Stock quantity')+'<input type="number" name="stock" min="0" step="1" value="1" required></label></div><label>'+(uz?'Mahsulot rasmi URL':ru?'URL изображения':'Product image URL')+'<input type="url" name="image" placeholder="https://..."></label><button class="btn primary" type="submit">'+(uz?'Mahsulotni saqlash':ru?'Сохранить товар':'Save product')+'</button></form></div></details>':'';
+  var cartRows=S.cart.map(function(x){var p=S.products.filter(function(z){return z.id===x.id})[0];if(!p)return '';return '<div class="cart-row"><div><b>'+esc(p.name)+'</b><p class="muted small-note">$'+Number(p.price).toFixed(2)+' × '+x.qty+'</p></div><div class="row"><button class="btn sm" data-a="cartminus" data-id="'+esc(p.id)+'">−</button><b>'+x.qty+'</b><button class="btn sm" data-a="cartadd" data-id="'+esc(p.id)+'">＋</button><button class="btn sm danger" data-a="cartremove" data-id="'+esc(p.id)+'">×</button></div></div>'}).join('');
+  var orders=isAdmin()&&S.orders.length?'<section class="card pad stack"><h2>'+(uz?'Buyurtmalar':ru?'Заказы':'Recent orders')+'</h2>'+S.orders.slice().reverse().map(function(o){return '<div class="cart-row"><div><b>'+esc(o.name)+' · '+esc(o.contact)+'</b><p class="muted small-note">'+esc(o.lines)+' · $'+Number(o.total).toFixed(2)+'</p></div><span class="badge">'+esc(stLabel(o.status||'New'))+'</span></div>'}).join('')+'</section>':'';
+  return '<div class="stack store-page"><div class="store-hero"><span class="eyebrow">KINOQUIZ MARKET</span><h1>'+(uz?'KinoQuiz do‘koni':ru?'Магазин KinoQuiz':'KinoQuiz Store')+'</h1><p>'+(uz?'Sevimli kino olamingiz uchun mahsulotlarni toping.':ru?'Найдите товары из любимого мира кино.':'Discover products for your screen-time lifestyle.')+'</p><span class="store-hero-icon">✦</span></div>'+adminForm+
+  '<div class="store-layout"><section class="stack"><div class="section-top"><div><span class="eyebrow">'+(uz?'KATALOG':'CATALOG')+'</span><h2>'+(uz?'Mahsulotlar':ru?'Товары':'Products')+'</h2></div><span class="badge">'+products.length+' '+(uz?'mahsulot':ru?'товаров':'products')+'</span></div><div class="store-grid">'+(productCards||'<div class="empty-studio card"><div class="empty-studio-mark">🛍️</div><div><h3>'+(uz?'Mahsulotlar tez orada':ru?'Товары скоро появятся':'Products are coming soon')+'</h3><p class="muted">'+(isAdmin()?(uz?'Birinchi mahsulotni yuqoridagi tugma orqali qo‘shing.':ru?'Добавьте первый товар через форму выше.':'Add your first product using the form above.'):(uz?'Do‘kon mahsulotlari tez orada shu yerda bo‘ladi.':ru?'Скоро здесь появятся товары.':'The shop catalogue will appear here soon.'))+'</p></div></div>')+'</div></section>'+
+  '<aside class="card pad stack store-cart"><div class="row between"><h2>🛒 '+(uz?'Savat':ru?'Корзина':'Your cart')+'</h2><span class="badge">'+count+'</span></div>'+(cartRows||'<p class="muted">'+(uz?'Savat hozircha bo‘sh.':ru?'Корзина пока пуста.':'Your cart is empty.')+'</p>')+'<div class="cart-total"><span>'+ (uz?'Jami':ru?'Итого':'Total')+'</span><b>$'+total.toFixed(2)+'</b></div>'+(count?'<form class="form" data-form="checkout"><label>'+(uz?'Ismingiz':ru?'Ваше имя':'Your name')+'<input name="buyer" type="text" required value="'+esc(S.session?dispName():'')+'"></label><label>'+(uz?'Telefon yoki Telegram':ru?'Телефон или Telegram':'Phone or Telegram')+'<input name="contact" type="text" required value="'+esc(S.session&&handleClean(prof().telegram,'tg')?'@'+handleClean(prof().telegram,'tg'):'')+'"></label><button class="btn primary" type="submit">'+(FB_ON?L('Buyurtma berish','Оформить заказ','Place order'):(uz?'Buyurtmani Telegramda yuborish':ru?'Отправить заказ в Telegram':'Send order via Telegram'))+' ↗</button></form>':'')+'<p class="small-note muted">'+(FB_ON?L('Buyurtmani jamoamiz Telegramda tasdiqlaydi. Profilda botni ulasangiz, holat yangilanishlari o‘sha yerga keladi. Onlayn to‘lov hozircha ulanmagan.','Команда подтвердит заказ в Telegram. Если подключить бота в Профиле, статусы будут приходить туда. Онлайн-оплата пока не подключена.','Our team confirms your order in Telegram. Connect the bot in Profile to get status updates there. Online payment is not connected yet.'):(uz?'Buyurtma Telegram orqali yuborish uchun tayyorlanadi. Onlayn to‘lov hozircha ulanmagan.':ru?'Заказ будет подготовлен для отправки через Telegram. Онлайн-оплата пока не подключена.':'The order is prepared for Telegram sharing. Online payment is not connected yet.'))+'</p></aside></div>'+orders+'</div>';
+ },
+ profile:function(){return profileView()},
+ support:function(){
+  var handle=supportHandle(S.bot||SUPPORT_USER),tg='tg://resolve?domain='+handle,web='https://t.me/'+handle;
+  var admin=isAdmin()?'<form class="form card pad" data-form="bot"><label>'+esc(t('bot_link'))+'<input type="text" name="bot" placeholder="@KinoQuizofficial_bot" value="'+esc('@'+supportHandle(S.bot||SUPPORT_USER))+'"></label><div><button class="btn primary" type="submit">'+esc(t('save'))+'</button></div></form>':'';
+  var own=(S.session&&S.session.rank==='owner'&&FB_ON)?'<section class="card pad stack"><h2>'+L('Adminlar','Администраторы','Admins')+'</h2><p class="muted small-note">'+L('Faqat egalar admin qo‘sha oladi. Yangi egani qo‘shib bo‘lmaydi.','Админов добавляют только владельцы. Новых владельцев добавить нельзя.','Only owners can add admins. New owners cannot be added.')+'</p><form class="form" data-form="addadmin"><label>Email<input type="email" name="email" required></label><button class="btn primary" type="submit">'+L('Admin qo‘shish','Добавить админа','Add admin')+'</button></form><div id="adminlist"></div></section>':'';
+  if(own&&kq()&&S.admins===undefined){S.admins=null;kq().listAdmins().then(function(r){S.admins=r.admins;var el=$('#adminlist');if(el)el.innerHTML=r.admins.map(function(a){return '<div class="cart-row"><div><b>'+esc(a.email)+'</b></div><span class="badge">'+esc(a.role)+'</span>'+(a.role==='owner'?'':'<button class="btn sm danger" data-a="rmadmin" data-id="'+esc(a.uid)+'">'+esc(t('del'))+'</button>')+'</div>'}).join('')},function(){})}
+  return '<div class="stack"><div class="head"><h1>'+esc(t('support_title'))+'</h1><p class="muted">'+esc(t('support_sub'))+'</p></div><div class="card pad stack support-card"><div class="support-orb">✉</div><h2>'+(S.lang==='uz'?'Telegram orqali bog‘laning':S.lang==='ru'?'Свяжитесь с нами в Telegram':'Talk to our support team')+'</h2><p class="muted">'+(S.lang==='uz'?'Tugmani bosing — Telegram ilovasi ochiladi.':S.lang==='ru'?'Нажмите кнопку — откроется приложение Telegram.':'Use the button to open the Telegram app directly.')+'</p><div class="row"><a class="btn primary" href="'+esc(tg)+'">'+esc(t('open_bot'))+' ↗</a><a class="btn" href="'+esc(web)+'" target="_blank" rel="noopener">'+(S.lang==='uz'?'Brauzerda ochish':S.lang==='ru'?'Открыть в браузере':'Open in browser')+'</a></div><p class="muted small-note">@'+esc(handle)+'</p></div>'+admin+own+'</div>';
+ },
+ search:function(){
+  var q=S.q.trim().toLowerCase();
+  var ns=sortedNews().filter(function(n){return (n.title+' '+n.about+' '+n.source).toLowerCase().indexOf(q)>-1});
+  var cs=allCollections().filter(function(c){return c.title.toLowerCase().indexOf(q)>-1||c.items.some(function(i){return i.q.toLowerCase().indexOf(q)>-1})});
+  var out='<div class="stack"><div class="head"><h1>'+esc(t('search_results'))+'</h1></div>';
+  if(!ns.length&&!cs.length)return out+'<div class="card empty">'+esc(t('no_results'))+'</div></div>';
+  if(ns.length)out+='<section class="stack" style="gap:12px"><h2>'+esc(t('nav_news'))+'</h2><div class="card">'+ns.map(newsRow).join('')+'</div></section>';
+  if(cs.length)out+='<section class="stack" style="gap:12px"><h2>'+esc(t('nav_quiz'))+'</h2><div class="cards">'+cs.map(collCard).join('')+'</div></section>';
+  return out+'</div>';
+ }
+};
+
+/* ---------- quiz player ---------- */
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var x=a[i];a[i]=a[j];a[j]=x}return a}
+async function startPlay(id,players){
+ var c=colById(id);if(!c)return;
+ var raw=[];CATS.forEach(function(cat,catIndex){var part=shuffle(c.items.filter(function(it){return it.cat===catIndex}));part.forEach(function(it){raw.push(it)})});
+ if(!raw.length){toast('This collection has no questions yet.');return}
+ try{
+  var items=[];
+  for(var i=0;i<raw.length;i++){
+   var it=raw[i],assets=[];
+   if(Array.isArray(it.mediaItems))for(var j=0;j<it.mediaItems.length;j++){var asset=await resolveMediaAsset(it.mediaItems[j]);if(asset)assets.push(asset)}
+   items.push({cat:it.cat,q:it.q,answer:it.answer||'',media:it.media||'',mediaItems:assets});
+  }
+  var roster=(Array.isArray(players)&&players.length?players:[me()]).map(function(n){return String(n||'').trim()}).filter(Boolean);if(!roster.length)roster=[me()];S.activeLobby=roster.length>1?{code:'KQ'+Math.random().toString(36).slice(2,7).toUpperCase(),players:roster,cid:id}:null;S.view='quiz';S.play={cid:id,items:items,i:0,picked:null,answerValue:'',score:0,playerScores:roster.reduce(function(o,n){o[n]=0;return o},{}),players:roster,playerIndex:0,by:{},done:false,startedAt:Date.now(),clipPlayed:false,clipTimer:null,tries:0,lastWrong:false,locked:false};render();window.scrollTo(0,0);
+ }catch(err){console.error(err);toast('Could not load an uploaded clue. Please reopen the collection.');}
+}
+function safeUrl(u){u=String(u||'').trim();return /^https?:\/\//i.test(u)?u:''}
+function normalizeAnswer(value){return String(value||'').toLocaleLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[“”‘’'".,!?;:()\[\]{}]/g,'').replace(/[-–—_&]/g,' ').replace(/\s+/g,' ').trim()}
+function lev(a,b){var m=a.length,n=b.length,row=[],i,j,prev,tmp;for(j=0;j<=n;j++)row[j]=j;for(i=1;i<=m;i++){prev=row[0];row[0]=i;for(j=1;j<=n;j++){tmp=row[j];row[j]=Math.min(row[j]+1,row[j-1]+1,prev+(a.charAt(i-1)===b.charAt(j-1)?0:1));prev=tmp}}return row[n]}
+/* Accepts alternatives written as "A | B", ignores a leading article, forgives a small typo in long titles (never when digits are involved, so "Toy Story 2" is not "Toy Story 3"). */
+function answerMatches(input,answer){
+ var strip=function(s){return normalizeAnswer(s).replace(/^(the|a|an)\s+/,'')},x=strip(input);
+ if(!x)return false;
+ return String(answer||'').split('|').some(function(v){var y=strip(v);if(!y)return false;if(x===y)return true;if(/\d/.test(x+y))return false;if(y.length>=6&&x.length>=4)return lev(x,y)<=(y.length>=12?2:1);return false});
+}
+function playOneSecondClip(){
+ var p=S.play,status=$('#clip-status'),btn=$('#play-one-second'),host=$('#one-second-player');
+ if(!p||!host||p.clipPlayed)return;
+ var current=p.items[p.i],url=String(current&&current.media||''),yt=youtubeId(url);
+ p.clipPlayed=true;if(btn){btn.disabled=true;btn.textContent=S.lang==='uz'?'Ijro etilmoqda…':S.lang==='ru'?'Воспроизведение…':'Playing…'}
+ if(status)status.textContent=S.lang==='uz'?'Diqqat! Lavha 1 soniya davomida ko‘rsatiladi.':S.lang==='ru'?'Внимание! Фрагмент будет показан одну секунду.':'Watch carefully — the clip is playing for one second.';
+ function finished(){p.clipDone=true;if(status)status.textContent=S.lang==='uz'?'Lavha tugadi. Javobingizni kiriting.':S.lang==='ru'?'Фрагмент закончился. Введите ответ.':'Clip finished. Enter your answer.';if(btn)btn.textContent=S.lang==='uz'?'Lavha tugadi':S.lang==='ru'?'Фрагмент завершён':'Clip finished'}
+ if(yt){
+  // Create the iframe only after the player's click so browser autoplay policies permit playback.
+  host.innerHTML='<iframe id="one-second-youtube" src="https://www.youtube.com/embed/'+yt+'?autoplay=1&start=0&end=1&playsinline=1&enablejsapi=1&rel=0" title="One-second movie clip" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+  if(p.clipTimer)clearTimeout(p.clipTimer);
+  var frame=$('#one-second-youtube');
+  if(frame)frame.addEventListener('load',function(){p.clipTimer=setTimeout(finished,3000)},{once:true});
+  return;
+ }
+ var v=document.createElement('video');v.id='one-second-video';v.playsInline=true;v.preload='auto';v.src=url;v.controls=false;v.style.cssText='width:100%;max-height:320px;border-radius:14px;background:#100d19';host.innerHTML='';host.appendChild(v);
+ try{v.currentTime=0}catch(e){}
+ var started=function(){if(p.clipTimer)clearTimeout(p.clipTimer);p.clipTimer=setTimeout(function(){try{v.pause();v.currentTime=Math.min(1,v.duration||1)}catch(e){}finished()},1000)};
+ var promise=v.play();if(promise&&typeof promise.then==='function')promise.then(started).catch(function(){p.clipPlayed=false;if(btn)btn.disabled=false;if(status)status.textContent='Could not play this video. Check the link or use a direct MP4/WebM URL.'});else started();
+}
+
+function playView(){
+ var p=S.play,c=colById(p.cid)||{title:'—'};
+ if(p.done){
+  var pct=Math.round(p.score/p.items.length*100);
+  var by=CATS.map(function(k,i){var b=p.by[i];return b?'<div class="row between"><span>'+esc(t('c_'+k))+'</span><b>'+b.r+' / '+b.n+'</b></div>':''}).join('');
+  var playerStanding=(p.players&&p.players.length>1)?'<section class="card pad stack"><h2>🏆 '+(S.lang==='uz'?'O‘yinchilar natijasi':S.lang==='ru'?'Результаты игроков':'Player standings')+'</h2>'+(p.players.slice().sort(function(a,b){return(p.playerScores[b]||0)-(p.playerScores[a]||0)}).map(function(n,i){return '<div class="cart-row"><b>'+(i+1)+'. '+esc(n)+'</b><strong>'+(p.playerScores[n]||0)+' '+(S.lang==='uz'?'ball':S.lang==='ru'?'очков':'points')+'</strong></div>'}).join(''))+'</section>':'';
+  return '<div class="stack"><div class="head"><span class="lbl-up">'+esc(c.title)+'</span><h1>'+esc(t('score'))+': '+p.score+' / '+p.items.length+'</h1><p class="muted">Completion time: <b>'+Math.floor(p.seconds/60)+'m '+(p.seconds%60)+'s</b></p></div><div class="card pad stack" style="gap:10px"><div class="bar"><i style="width:'+pct+'%"></i></div>'+by+'</div>'+playerStanding+'<div class="row"><button class="btn primary" data-a="startplay" data-id="'+esc(p.cid)+'">'+esc(t('play_again'))+'</button><button class="btn" data-a="go" data-v="quiz">'+esc(t('back'))+'</button></div></div>';
+ }
+ var it=p.items[p.i],answered=p.picked!==null,uz=S.lang==='uz',ru=S.lang==='ru';
+ var media='';
+ if(it.mediaItems&&it.mediaItems.length)media='<div class="quiz-media-grid">'+it.mediaItems.map(mediaAssetHtml).join('')+'</div>';
+ if(it.media&&(it.cat===1||it.cat===2))media=mediaAssetHtml({src:it.media,type:mediaTypeFromUrl(it.media)});
+ if(it.media&&it.cat===6)media='<div class="one-second-alert" role="alert"><div class="one-second-alert-icon">⏱</div><div><b>'+(uz?'DIQQAT — 7-BOSQICH':ru?'ВНИМАНИЕ — 7-Й РАУНД':'ATTENTION — ROUND 7')+'</b><p>'+(uz?'Video lavha faqat 1 soniya davomida ijro etiladi. Diqqat bilan tomosha qiling!':ru?'Видео будет воспроизведено только одну секунду. Смотрите внимательно!':'The movie clip will play for only 1 second. Watch carefully!')+'</p></div></div><div id="one-second-player" class="one-second-player"></div><div class="row"><button class="btn primary" id="play-one-second" data-a="playclip"'+(p.clipPlayed?' disabled':'')+'>'+(p.clipPlayed?(uz?'Lavha tugadi':ru?'Фрагмент завершён':'Clip played'):(uz?'1 soniyalik lavhani ko‘rish':ru?'Показать 1 секунду':'Play 1-second clip'))+'</button><span class="muted" id="clip-status" aria-live="polite">'+(uz?'Tayyor bo‘ling — video atigi 1 soniya ko‘rsatiladi.':ru?'Будьте готовы — видео будет показано всего одну секунду.':'Get ready — the video is shown for just one second.')+'</span></div>';
+ var feedback='';
+ if(p.picked===true)feedback='<div class="attempt-note success" role="status">'+(uz?'✓ To‘g‘ri javob!':ru?'✓ Верно!':'✓ Correct!')+'</div>';
+ else if(p.locked)feedback='<div class="attempt-note" role="status">'+(uz?'3 ta urinish tugadi. To‘g‘ri javob ko‘rsatilmaydi.':ru?'Три попытки закончились. Правильный ответ не будет показан.':'Three attempts used. The correct answer will not be revealed.')+'</div>';
+ else if(p.tries>0)feedback='<div class="attempt-note" role="status">'+(uz?'Bu javob noto‘g‘ri. Yana '+(3-p.tries)+' ta urinish qoldi. Javob oshkor qilinmaydi.':ru?'Неверный ответ. Осталось попыток: '+(3-p.tries)+'. Ответ не раскрывается.':'Not quite. '+(3-p.tries)+(3-p.tries===1?' attempt left.':' attempts left.')+' The answer will not be revealed.')+'</div>';
+ var answerField='<label class="answer-entry">'+(uz?'Javobingiz':ru?'Ваш ответ':'Your answer')+'<input id="answerinput" type="text" value="'+esc(p.answerValue||'')+'" placeholder="'+(uz?'Javobni shu yerga yozing':ru?'Введите ответ здесь':'Type your answer here')+'" '+(answered?'disabled':'')+' autocomplete="off"></label><span class="attempt-hint">'+(uz?'Har bir savol uchun 3 ta urinish. To‘g‘ri javob ochilmaydi.':ru?'Три попытки на вопрос. Правильный ответ не раскрывается.':'3 attempts per question · the correct answer is never revealed')+'</span>';
+ var actions=answered?'<button class="btn primary" data-a="nextq">'+esc(p.i+1===p.items.length?t('finish'):t('next'))+'</button>':'<button class="btn primary" data-a="submitanswer">'+(uz?'Javobni tekshirish':ru?'Проверить ответ':'Check answer')+'</button>';
+ var turnBanner=p.players&&p.players.length>1?'<div class="turn-banner"><span>🎮</span><div><small>'+(uz?'HOZIRGI NAVBAT':ru?'ТЕКУЩИЙ ХОД':'NOW PLAYING')+'</small><b>'+esc(p.players[p.playerIndex])+'</b></div><span class="badge">'+esc(S.activeLobby?S.activeLobby.code:'')+'</span></div>':'';
+ return '<div class="stack"><div class="row between"><span class="lbl-up">'+esc(c.title)+'</span><span class="muted" style="font-variant-numeric:tabular-nums">'+(p.i+1)+' / '+p.items.length+'</span></div><div class="bar"><i style="width:'+((p.i+1)/p.items.length*100)+'%"></i></div>'+turnBanner+'<div class="card pad stack">'+media+'<span class="badge" style="align-self:flex-start">'+esc(t('c_'+CATS[it.cat]))+'</span><h2 style="font-family:var(--font-body);font-size:20px;line-height:1.45">'+esc(it.q)+'</h2>'+answerField+feedback+'</div><div class="row">'+actions+'<button class="btn" data-a="go" data-v="quiz">'+esc(t('back'))+'</button></div></div>';
+}
+
+/* ---------- login modal ---------- */
+function openLogin(){S.auth={mode:S.auth.mode||'signin'};renderModal()}
+function closeModal(force){if(S.forcePw&&force!==true)return;$('#modal').hidden=true;$('#modal').innerHTML=''}
+function renderModal(){
+ if(S.forcePw){renderForcePwModal();return}
+ if(S.auth.mode==='forgot'&&FB_ON){renderForgotModal();return}
+ var a=S.auth,m=$('#modal');m.hidden=false;var up=a.mode==='signup';
+ var modeToggle='<div class="auth-toggle"><button class="btn sm" data-a="authmode" data-v="signin" aria-pressed="'+(!up)+'">'+esc(t('signin'))+'</button><button class="btn sm" data-a="authmode" data-v="signup" aria-pressed="'+up+'">'+esc(t('signup'))+'</button></div>';
+ var body='<form class="form" data-form="'+(up?'signup':'login')+'"><label>Email<input type="email" id="vu" autocomplete="email" required></label>'+(up&&FB_ON?'<label>'+esc(t('username'))+'<input type="text" id="vn" autocomplete="username" required></label>':'')+'<label>'+esc(t('password'))+'<input type="password" id="vp" autocomplete="'+(up?'new-password':'current-password')+'" required minlength="'+(FB_ON?6:4)+'"></label><p class="err" id="autherr"></p><button class="btn primary" type="submit">'+esc(up?t('signup'):t('signin'))+'</button></form>';
+ var recovery=!up?'<div class="auth-links"><button class="text-link" data-a="forgotpassword">'+L('Parol yoki loginni unutdingizmi?','Забыли пароль или логин?','Forgot your password or login?')+'</button></div>':'';
+ m.innerHTML='<div class="overlay" data-a="overlay"><div class="dlg" role="dialog" aria-modal="true" aria-label="'+esc(t('login'))+'"><div class="row between"><h2>'+esc(t('login'))+'</h2><button class="btn sm" data-a="closemodal" aria-label="Close">✕</button></div>'+modeToggle+body+((up&&FB_ON)?'<p class="muted small-note">'+esc(L('Maslahat: ro‘yxatdan o‘tgach Profil → Telegram orqali botni ulang — parolni tiklash osonlashadi.','Совет: после регистрации подключите бота в Профиль → Telegram — так проще восстановить пароль.','Tip: after signing up, connect the bot in Profile → Telegram so you can recover your password easily.'))+'</p>':'')+recovery+'</div></div>';
+ var f=m.querySelector('input');if(f)f.focus();
+}
+function hashPw(s){
+ try{return crypto.subtle.digest('SHA-256',new TextEncoder().encode('kq:'+s)).then(function(b){return Array.prototype.map.call(new Uint8Array(b),function(x){return ('0'+x.toString(16)).slice(-2)}).join('')})}
+ catch(e){return Promise.resolve('p:'+s)}
+}
+function setErr(k){var e=$('#autherr');if(e)e.textContent=t(k)}
+function setErrText(m){var e=$('#autherr');if(e)e.textContent=m}
+function loginOk(name,role){S.session={name:name,role:role};sv('session',S.session);if(S.lobbyPlayers.length===1&&S.lobbyPlayers[0]==='Player 1'){S.lobbyPlayers=[name];sv('lobbyPlayers',S.lobbyPlayers)}closeModal();render()}
+
+/* ---------- v9: profile, Telegram connection, password recovery ---------- */
+var GENRES=['Action','Comedy','Drama','Sci-Fi','Fantasy','Horror','Thriller','Romance','Animation','Anime','Crime','Documentary'];
+var ST_LABEL={uz:{New:'Yangi',Prepared:'Tayyorlandi',Confirmed:'Tasdiqlandi',Shipped:'Yuborildi',Delivered:'Yetkazildi',Cancelled:'Bekor qilindi'},ru:{New:'Новый',Prepared:'Подготовлен',Confirmed:'Подтверждён',Shipped:'Отправлен',Delivered:'Доставлен',Cancelled:'Отменён'},en:{New:'New',Prepared:'Prepared',Confirmed:'Confirmed',Shipped:'Shipped',Delivered:'Delivered',Cancelled:'Cancelled'}};
+function stLabel(s){return (ST_LABEL[S.lang]||ST_LABEL.en)[s]||s}
+var lastLoginPw='';
+function prof(){var p=S.profiles&&S.profiles[me()];return p&&typeof p==='object'?p:{}}
+function dispName(){var n=String(prof().displayName||'').trim();return n||(S.session?S.session.name:L('Mehmon','Гость','Guest'))}
+function cleanAvatar(a){a=String(a||'');return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(a)&&a.length<300000?a:''}
+function hueOf(s){var h=0;s=String(s||'?');for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h}
+function avatarHtml(size,cls){
+ var p=prof(),src=S.session?cleanAvatar(p.avatar):'',name=S.session?dispName():'?',hue=hueOf(name);
+ var st='width:'+size+'px;height:'+size+'px;font-size:'+Math.round(size*.42)+'px';
+ if(src)return '<img class="av '+(cls||'')+'" style="'+st+'" src="'+esc(src)+'" alt="">';
+ return '<span class="av '+(cls||'')+'" style="'+st+';background:linear-gradient(135deg,hsl('+hue+' 70% 58%),hsl('+((hue+45)%360)+' 70% 44%))" aria-hidden="true">'+(S.session?esc(name.slice(0,1).toUpperCase()):'👤')+'</span>';
+}
+function handleClean(v,kind){
+ v=String(v||'').trim().replace(/^https?:\/\/(www\.)?(t\.me|telegram\.me|instagram\.com)\//i,'').replace(/^@/,'').replace(/[\/?#].*$/,'');
+ return (kind==='tg'?/^[A-Za-z0-9_]{5,32}$/:/^[A-Za-z0-9._]{1,30}$/).test(v)?v:'';
+}
+function saveProfile(patch){S.profiles[me()]=Object.assign({},prof(),patch);sv('profiles',S.profiles)}
+function resizeAvatar(file){
+ return new Promise(function(res,rej){
+  if(!file||!/^image\//.test(file.type)||file.size>15*1024*1024){rej(new Error('type'));return}
+  var url=URL.createObjectURL(file),img=new Image();
+  img.onload=function(){var s=Math.min(img.width,img.height)||1,c=document.createElement('canvas');c.width=c.height=256;c.getContext('2d').drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,256,256);URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',.84))};
+  img.onerror=function(){URL.revokeObjectURL(url);rej(new Error('decode'))};
+  img.src=url;
+ });
+}
+function myStats(){
+ var sc=S.scores[me()]||{},ids=Object.keys(sc),best=0,cor=0,tot=0;
+ ids.forEach(function(id){var b=sc[id];if(b&&b.n){best=Math.max(best,Math.round(b.s/b.n*100));cor+=b.s;tot+=b.n}});
+ return {played:ids.length,best:best,cor:cor,acc:tot?Math.round(cor/tot*100):0};
+}
+function myOrdersList(){
+ var uid=S.session&&S.session.uid;
+ return S.orders.filter(function(o){return FB_ON?(!uid||o.uid===uid):true}).slice().sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0)}).slice(0,8);
+}
+function railProfile(){
+ var name=S.session?dispName():L('Mehmon','Гость','Guest'),sub=S.session?'@'+S.session.name+(isAdmin()?' · admin':''):L('Kirish uchun bosing','Нажмите, чтобы войти','Tap to sign in');
+ return '<button class="profile-card" data-a="go" data-v="profile" title="'+esc(t('nav_profile'))+'"'+(S.view==='profile'&&!S.q?' aria-current="page"':'')+'>'+avatarHtml(46)+'<span class="pc-text"><b>'+esc(name)+'</b><small>'+esc(sub)+'</small></span><span class="pc-go" aria-hidden="true">›</span></button>';
+}
+
+/* ----- profile page sections ----- */
+function profHero(){
+ var p=prof(),st=myStats(),bought=(S.purchased[me()]||[]).length;
+ var genres=(Array.isArray(p.genres)?p.genres:[]).filter(function(x){return GENRES.indexOf(x)>-1});
+ var chips=(p.city?'<span class="chip">📍 '+esc(p.city)+'</span>':'')+(p.movie?'<span class="chip">🎬 '+esc(p.movie)+'</span>':'')+genres.map(function(g){return '<span class="chip alt">'+esc(g)+'</span>'}).join('');
+ var tg=handleClean(p.telegram,'tg'),ig=handleClean(p.instagram,'ig'),web=/^https?:\/\//i.test(p.website||'')?p.website:'';
+ var links=(tg?'<a class="soc tg" href="https://t.me/'+esc(tg)+'" target="_blank" rel="noopener noreferrer"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.5 4.3 2.9 11.5c-1.3.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.1.8.7.8.5 0 .7-.2 1-.5l2.3-2.3 4.8 3.6c.9.5 1.5.2 1.7-.8l3.1-14.8c.3-1.3-.5-1.9-1.3-1.5zM8.4 13.8l9.9-6.2c.5-.3.9-.1.5.2l-8.1 7.3-.3 3.4z"/></svg>@'+esc(tg)+'</a>':'')+
+  (ig?'<a class="soc ig" href="https://instagram.com/'+esc(ig)+'" target="_blank" rel="noopener noreferrer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none"/></svg>@'+esc(ig)+'</a>':'')+
+  (web?'<a class="soc web" href="'+esc(web)+'" target="_blank" rel="noopener noreferrer">🌐 '+esc(web.replace(/^https?:\/\/(www\.)?/i,'').slice(0,28))+'</a>':'');
+ var done=[!!cleanAvatar(p.avatar),!!p.bio,!!p.city,!!p.movie,genres.length>0,!!(tg||ig)],pct=Math.round(done.filter(Boolean).length/done.length*100);
+ var ach=[
+  {i:'🎬',n:L('Birinchi o‘yin','Первая игра','First game'),on:st.played>=1},
+  {i:'🎯',n:L('80%+ natija','Результат 80%+','80%+ score'),on:st.best>=80},
+  {i:'🛍',n:L('Xaridor','Покупатель','Shopper'),on:bought>0||myOrdersList().length>0},
+  {i:'✈️',n:L('Telegram ulandi','Telegram подключён','Telegram linked'),on:!!S.tg},
+  {i:'⭐',n:L('To‘liq profil','Полный профиль','Full profile'),on:pct===100}
+ ];
+ return '<section class="card prof-hero"><div class="prof-cover" aria-hidden="true"><i></i><i></i><i></i></div>'+
+  '<div class="prof-head"><div class="prof-avatar">'+avatarHtml(112,'big')+'<button class="prof-cam" data-a="pickavatar" aria-label="'+esc(L('Rasmni almashtirish','Сменить фото','Change photo'))+'" title="'+esc(L('Rasmni almashtirish','Сменить фото','Change photo'))+'">📷</button><input type="file" id="avatarfile" accept="image/*" hidden></div>'+
+  '<div class="prof-id"><h1>'+esc(dispName())+'</h1><p class="muted">@'+esc(S.session.name)+' · <span class="badge '+(isAdmin()?'paid':'free')+'">'+(isAdmin()?'Admin':L('A’zo','Участник','Member'))+'</span></p></div></div>'+
+  (p.avatar?'<button class="text-link prof-rmphoto" data-a="clearavatar">'+esc(L('Rasmni o‘chirish','Удалить фото','Remove photo'))+'</button>':'')+
+  '<p class="prof-bio">'+(p.bio?esc(p.bio):'<span class="muted">'+esc(L('O‘zingiz haqingizda yozing — sevimli kino, janr, ijtimoiy tarmoqlar.','Расскажите о себе — любимое кино, жанры, соцсети.','Tell people about yourself — favourite film, genres, socials.'))+'</span>')+'</p>'+
+  (chips?'<div class="prof-chips">'+chips+'</div>':'')+(links?'<div class="prof-links">'+links+'</div>':'')+
+  '<div class="prof-stats"><div><b>'+st.played+'</b><span>'+esc(L('O‘yin','Игр','Played'))+'</span></div><div><b>'+st.best+'%</b><span>'+esc(L('Eng yaxshi','Лучший','Best'))+'</span></div><div><b>'+st.cor+'</b><span>'+esc(L('To‘g‘ri','Верно','Correct'))+'</span></div><div><b>'+st.acc+'%</b><span>'+esc(L('Aniqlik','Точность','Accuracy'))+'</span></div></div>'+
+  '<div class="prof-progress"><div class="row between"><span class="lbl-up">'+esc(L('Profil to‘liqligi','Заполненность','Profile completeness'))+'</span><b>'+pct+'%</b></div><div class="bar"><i style="width:'+pct+'%"></i></div></div>'+
+  '<div class="prof-ach">'+ach.map(function(a){return '<div class="ach'+(a.on?' on':'')+'" title="'+esc(a.n)+'"><span class="coin">'+a.i+'</span><small>'+esc(a.n)+'</small></div>'}).join('')+'</div></section>';
+}
+function profForm(){
+ var p=prof(),gs=Array.isArray(p.genres)?p.genres:[];
+ return '<section class="card pad stack"><div><span class="eyebrow">'+esc(L('PROFIL','ПРОФИЛЬ','PROFILE'))+'</span><h2>'+esc(L('Profilni tahrirlash','Редактировать профиль','Edit profile'))+'</h2></div>'+
+  '<form class="form" data-form="profile"><div class="two"><label>'+esc(L('Ko‘rinadigan ism','Отображаемое имя','Display name'))+'<input type="text" name="displayName" maxlength="40" value="'+esc(p.displayName||'')+'" placeholder="'+esc(S.session.name)+'"></label><label>'+esc(L('Shahar','Город','City'))+'<input type="text" name="city" maxlength="40" value="'+esc(p.city||'')+'" placeholder="Tashkent"></label></div>'+
+  '<label>'+esc(L('Men haqimda','О себе','About me'))+'<textarea name="bio" maxlength="160" rows="3" placeholder="'+esc(L('Masalan: Marvel ishqibozi 🎬','Например: фанат Marvel 🎬','e.g. Marvel fan, movie-night host 🎬'))+'">'+esc(p.bio||'')+'</textarea></label>'+
+  '<label>'+esc(L('Sevimli film yoki serial','Любимый фильм или сериал','Favourite film or series'))+'<input type="text" name="movie" maxlength="60" value="'+esc(p.movie||'')+'"></label>'+
+  '<div class="stack" style="gap:8px"><span class="lbl-up">'+esc(L('Sevimli janrlar','Любимые жанры','Favourite genres'))+'</span><div class="chip-pick">'+GENRES.map(function(g){return '<label class="chip-check"><input type="checkbox" name="genre" value="'+g+'"'+(gs.indexOf(g)>-1?' checked':'')+'><span>'+g+'</span></label>'}).join('')+'</div></div>'+
+  '<div class="two"><label>Telegram<input type="text" name="telegram" maxlength="60" value="'+esc(p.telegram||'')+'" placeholder="@username" autocapitalize="none" autocomplete="off"></label><label>Instagram<input type="text" name="instagram" maxlength="60" value="'+esc(p.instagram||'')+'" placeholder="@username" autocapitalize="none" autocomplete="off"></label></div>'+
+  '<label>'+esc(L('Veb-sayt (ixtiyoriy)','Сайт (необязательно)','Website (optional)'))+'<input type="url" name="website" maxlength="120" value="'+esc(p.website||'')+'" placeholder="https://"></label>'+
+  '<p class="err" id="proferr"></p><div><button class="btn primary" type="submit">'+esc(L('Saqlash','Сохранить','Save profile'))+'</button></div></form></section>';
+}
+function profTelegram(){
+ var handle=supportHandle(S.bot||SUPPORT_USER),bot='https://t.me/'+handle,linked=!!S.tg;
+ var status=FB_ON?(linked?'<span class="badge ok">✓ '+esc(L('Ulangan','Подключён','Connected'))+(S.tg.username?' · @'+esc(S.tg.username):'')+'</span>':'<span class="badge warn">'+esc(L('Ulanmagan','Не подключён','Not connected'))+'</span>'):'';
+ var codeBox='';
+ if(FB_ON&&!linked&&S.tgCode&&S.tgCode.exp>Date.now()){
+  codeBox='<div class="link-code"><p>'+esc(L('Telegram ochilmadimi? Pastdagi tugmani bosing yoki botga shuni yuboring:','Telegram не открылся? Нажмите кнопку ниже или отправьте боту:','Telegram did not open? Tap the button below or send this to the bot:'))+'</p><code>/link '+esc(S.tgCode.code)+'</code><a class="btn primary" href="'+esc(bot+'?start=link_'+S.tgCode.code)+'" target="_blank" rel="noopener noreferrer">✈️ '+esc(L('Telegramda tasdiqlash','Подтвердить в Telegram','Confirm in Telegram'))+'</a><small class="muted">'+esc(L('Kod 10 daqiqa amal qiladi.','Код действует 10 минут.','The code works for 10 minutes.'))+'</small></div>';
+ }
+ return '<section class="card pad stack prof-tg"><div class="row between"><div><span class="eyebrow">TELEGRAM</span><h2>'+esc(L('Telegram-bot','Telegram-бот','Telegram bot'))+'</h2></div>'+status+'</div>'+
+  '<ul class="tg-feats"><li>🔑 '+esc(L('Parol yoki loginni unutsangiz — bot vaqtinchalik parol yuboradi','Забыли пароль или логин — бот пришлёт временный пароль','Forgot your password or login — the bot sends a temporary password'))+'</li><li>🛍 '+esc(L('Do‘konni ko‘rish, buyurtma berish va holatini kuzatish','Каталог, заказы и статус доставки','Browse the store, order and track delivery'))+'</li><li>💬 '+esc(L('Savollarga javob','Ответы на вопросы','Answers to your questions'))+'</li></ul>'+
+  (FB_ON?(linked?'<p class="muted">'+esc(L('Hisobingiz ulangan. Parolni unutsangiz botga /forgot yuboring. Uzish uchun botga /unlink yuboring.','Аккаунт подключён. Если забудете пароль — отправьте боту /forgot. Чтобы отключить — /unlink.','Your account is connected. If you forget your password, send /forgot to the bot. To disconnect, send /unlink.'))+'</p>'
+   :'<p class="muted">'+esc(L('Hisobni ulang — shunda bot sizni tanib, parolni tiklab bera oladi.','Подключите аккаунт — тогда бот сможет вас узнать и восстановить пароль.','Connect your account so the bot can recognise you and recover your password.'))+'</p>')+codeBox
+   :'<p class="muted">'+esc(L('Hisobni ulash onlayn versiyada ishlaydi. Hozircha botni ochib, savol berishingiz mumkin.','Привязка аккаунта работает в онлайн-версии. Пока можно открыть бота и задать вопрос.','Account connection works in the online version. For now you can open the bot and ask a question.'))+'</p>')+
+  '<div class="row">'+(FB_ON&&!linked?'<button class="btn primary" data-a="tgconnect">✈️ '+esc(L('Telegramni ulash','Подключить Telegram','Connect Telegram'))+'</button>':'')+'<a class="btn'+(FB_ON&&!linked?'':' primary')+'" href="'+esc(bot)+'" target="_blank" rel="noopener noreferrer">'+esc(t('open_bot'))+' ↗</a></div></section>';
+}
+function profPassword(){
+ if(!FB_ON&&isAdmin())return '';
+ return '<section class="card pad stack"><div><span class="eyebrow">'+esc(L('XAVFSIZLIK','БЕЗОПАСНОСТЬ','SECURITY'))+'</span><h2>'+esc(L('Parolni almashtirish','Смена пароля','Change password'))+'</h2></div>'+
+  '<form class="form" data-form="chpw"><label>'+esc(L('Joriy parol','Текущий пароль','Current password'))+'<input type="password" name="cur" autocomplete="current-password" required></label><div class="two"><label>'+esc(L('Yangi parol','Новый пароль','New password'))+'<input type="password" name="n1" autocomplete="new-password" minlength="'+(FB_ON?6:4)+'" required></label><label>'+esc(L('Takrorlang','Повторите','Repeat'))+'<input type="password" name="n2" autocomplete="new-password" minlength="'+(FB_ON?6:4)+'" required></label></div><p class="err" id="pwerr"></p><div><button class="btn" type="submit">'+esc(L('Parolni yangilash','Обновить пароль','Update password'))+'</button></div></form></section>';
+}
+function profAppearance(){
+ var th=S.theme,langs=['uz','en','ru'].map(function(l){return '<button data-a="lang" data-v="'+l+'" aria-pressed="'+(S.lang===l)+'">'+l.toUpperCase()+'</button>'}).join('');
+ return '<section class="card pad stack"><div><span class="eyebrow">'+esc(L('KO‘RINISH','ВНЕШНИЙ ВИД','APPEARANCE'))+'</span><h2>'+esc(t('theme_title'))+'</h2><p class="muted">'+esc(t('theme_sub'))+'</p></div>'+
+  '<div class="stack" style="gap:8px"><span class="lbl-up">'+esc(t('mode'))+'</span><div class="seg" style="align-self:flex-start">'+['system','light','dark'].map(function(m){return '<button data-a="mode" data-v="'+m+'" aria-pressed="'+(th.mode===m)+'">'+esc(t('m_'+m))+'</button>'}).join('')+'</div></div>'+
+  '<div class="stack" style="gap:8px"><span class="lbl-up">'+esc(t('accent'))+'</span><div class="swatches">'+SWATCH.map(function(c){return '<button class="sw" style="background:'+c+'" data-a="accent" data-v="'+c+'" aria-label="'+c+'" aria-pressed="'+(th.accent.toLowerCase()===c.toLowerCase())+'"></button>'}).join('')+'<input type="color" id="accentpick" value="'+esc(th.accent)+'" aria-label="'+esc(t('accent'))+'"></div></div>'+
+  '<div class="stack" style="gap:8px"><span class="lbl-up">'+esc(L('Til','Язык','Language'))+'</span><div class="seg" style="align-self:flex-start">'+langs+'</div></div>'+
+  '<div class="preview"><button class="btn primary" type="button">'+esc(t('play'))+'</button><span class="badge paid">'+esc(t('paid'))+'</span><span class="badge free">'+esc(t('free'))+'</span></div>'+
+  '<div><button class="btn" data-a="resettheme">'+esc(t('reset'))+'</button></div></section>';
+}
+function profOrders(){
+ var list=myOrdersList();
+ return '<section class="card pad stack"><div class="row between"><div><span class="eyebrow">'+esc(L('DO‘KON','МАГАЗИН','STORE'))+'</span><h2>'+esc(L('Buyurtmalarim','Мои заказы','My orders'))+'</h2></div><button class="btn sm" data-a="go" data-v="store">'+esc(t('nav_store'))+' ↗</button></div>'+
+  (list.length?list.map(function(o){return '<div class="cart-row"><div><b>'+esc(o.id)+'</b><p class="muted small-note">'+esc(o.lines||'')+' · $'+Number(o.total||0).toFixed(2)+'</p></div><span class="badge st-'+esc(o.status||'New')+'">'+esc(stLabel(o.status||'New'))+'</span></div>'}).join(''):'<p class="muted">'+esc(L('Hozircha buyurtmalar yo‘q.','Заказов пока нет.','No orders yet.'))+'</p>')+'</section>';
+}
+function profileView(){
+ if(!S.session){
+  return '<div class="stack prof-page"><div class="head"><span class="eyebrow">KINOQUIZ</span><h1>'+esc(t('nav_profile'))+'</h1></div><div class="prof-grid"><section class="card pad stack prof-guest"><div class="prof-guest-orb">'+avatarHtml(84)+'</div><h2>'+esc(L('Profilingizni yarating','Создайте свой профиль','Create your profile'))+'</h2><p class="muted">'+esc(L('Rasm, ism, sevimli janrlar, Telegram va Instagram — hammasi bir joyda. Natijalaringiz saqlanadi, parolni bot orqali tiklash mumkin.','Фото, имя, любимые жанры, Telegram и Instagram — всё в одном месте. Результаты сохраняются, а пароль можно восстановить через бота.','Photo, name, favourite genres, Telegram and Instagram — all in one place. Your results are saved and you can recover your password with our bot.'))+'</p><div class="row"><button class="btn primary" data-a="openlogin">'+esc(t('login'))+'</button></div></section><div class="stack">'+profAppearance()+'</div></div></div>';
+ }
+ return '<div class="stack prof-page"><div class="prof-grid"><div class="stack prof-left">'+profHero()+'</div><div class="stack prof-right">'+profForm()+profTelegram()+profPassword()+profAppearance()+profOrders()+'</div></div></div>';
+}
+
+/* ----- password-recovery dialogs ----- */
+function renderForgotModal(){
+ var m=$('#modal'),handle=supportHandle(S.bot||SUPPORT_USER);m.hidden=false;
+ m.innerHTML='<div class="overlay" data-a="overlay"><div class="dlg" role="dialog" aria-modal="true" aria-label="'+esc(L('Parolni tiklash','Восстановление','Recover access'))+'"><div class="row between"><h2>'+esc(L('Parol yoki loginni unutdingizmi?','Забыли пароль или логин?','Forgot password or login?'))+'</h2><button class="btn sm" data-a="closemodal" aria-label="Close">✕</button></div>'+
+  '<ol class="steps"><li>'+esc(L('Pastdagi tugmani bosing — Telegramda bizning bot ochiladi.','Нажмите кнопку ниже — откроется наш бот в Telegram.','Tap the button — our bot opens in Telegram.'))+'</li><li>'+esc(L('Start tugmasini bosing. Bot loginingiz va vaqtinchalik parolni yuboradi.','Нажмите Start. Бот пришлёт ваш логин и временный пароль.','Press Start. The bot sends your login and a temporary password.'))+'</li><li>'+esc(L('Shu ma’lumotlar bilan kiring — KinoQuiz yangi parol o‘rnatishni so‘raydi.','Войдите с ними — KinoQuiz попросит придумать новый пароль.','Sign in with them — KinoQuiz will ask you to choose a new password.'))+'</li></ol>'+
+  '<a class="btn primary" href="https://t.me/'+esc(handle)+'?start=forgot" target="_blank" rel="noopener noreferrer">✈️ '+esc(t('open_bot'))+'</a>'+
+  '<p class="muted small-note">'+esc(L('Bot sizni faqat Profil → Telegram orqali oldindan ulagan bo‘lsangiz taniydi. Aks holda so‘rovingiz jamoamizga yuboriladi.','Бот узнаёт вас, только если вы заранее подключили Telegram в Профиле. Иначе запрос уйдёт нашей команде.','The bot recognises you only if you connected Telegram in Profile beforehand. Otherwise your request goes to our team.'))+'</p>'+
+  '<form class="form" data-form="resetemail"><label>'+esc(L('Yoki email orqali tiklash','Или восстановить по email','Or reset by email'))+'<input type="email" id="rse" autocomplete="email" required></label><p class="err" id="autherr"></p><button class="btn" type="submit">'+esc(L('Havola yuborish','Отправить ссылку','Send reset link'))+'</button></form>'+
+  '<button class="text-link" data-a="authmode" data-v="signin">‹ '+esc(L('Kirishga qaytish','Назад ко входу','Back to sign in'))+'</button></div></div>';
+}
+function renderForcePwModal(){
+ var m=$('#modal');m.hidden=false;
+ m.innerHTML='<div class="overlay"><div class="dlg" role="dialog" aria-modal="true" aria-label="'+esc(L('Yangi parol','Новый пароль','Set a new password'))+'"><h2>🔐 '+esc(L('Yangi parol o‘rnating','Задайте новый пароль','Set a new password'))+'</h2><p class="muted">'+esc(L('Siz vaqtinchalik parol bilan kirdingiz. Davom etish uchun o‘zingizning parolingizni tanlang.','Вы вошли с временным паролем. Чтобы продолжить, придумайте свой пароль.','You signed in with a temporary password. Choose your own password to continue.'))+'</p>'+
+  '<form class="form" data-form="forcepw">'+(lastLoginPw?'':'<label>'+esc(L('Vaqtinchalik parol','Временный пароль','Temporary password'))+'<input type="password" id="fp0" autocomplete="current-password" required></label>')+
+  '<label>'+esc(L('Yangi parol','Новый пароль','New password'))+'<input type="password" id="fp1" autocomplete="new-password" minlength="6" required></label><label>'+esc(L('Takrorlang','Повторите','Repeat'))+'<input type="password" id="fp2" autocomplete="new-password" minlength="6" required></label><p class="err" id="autherr"></p><button class="btn primary" type="submit">'+esc(L('Parolni saqlash','Сохранить пароль','Save password'))+'</button></form>'+
+  '<button class="text-link" data-a="logout">'+esc(t('logout'))+'</button></div></div>';
+ var f=m.querySelector('input');if(f)f.focus();
+}
+function pwError(err){
+ var c=err&&err.code||'';
+ return c==='auth/invalid-credential'||c==='auth/wrong-password'||c==='auth/invalid-login-credentials'?L('Joriy parol noto‘g‘ri.','Текущий пароль неверен.','The current password is wrong.'):
+  c==='auth/weak-password'?L('Parol juda oddiy.','Слишком простой пароль.','That password is too weak.'):
+  c==='auth/too-many-requests'?L('Juda ko‘p urinish. Keyinroq urinib ko‘ring.','Слишком много попыток. Попробуйте позже.','Too many attempts. Try again later.'):
+  c==='auth/network-request-failed'?L('Internet aloqasi yo‘q.','Нет подключения к сети.','Network error.'):L('Parolni o‘zgartirib bo‘lmadi.','Не удалось сменить пароль.','Could not change the password.');
+}
+
+document.addEventListener('change',function(e){
+ if(!e.target||e.target.id!=='avatarfile')return;
+ var file=e.target.files&&e.target.files[0];e.target.value='';
+ resizeAvatar(file).then(function(data){saveProfile({avatar:data});render();toast(L('Rasm yangilandi ✓','Фото обновлено ✓','Photo updated ✓'))},function(){toast(L('Rasm yuklab bo‘lmadi. JPG yoki PNG tanlang.','Не удалось загрузить фото. Выберите JPG или PNG.','Could not use that image. Try a JPG or PNG.'))});
+});
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(e){
+ var el=e.target.closest('[data-a]');if(!el)return;
+ var a=el.dataset.a,v=el.dataset.v,id=el.dataset.id;
+ if(a==='overlay'){if(e.target===el)closeModal();return}
+ switch(a){
+  case 'go':go(v);break;
+  case 'lang':S.lang=v;sv('lang',v);render();break;
+  case 'openlogin':openLogin();break;
+  case 'forgotpassword':{if(FB_ON){S.auth.mode='forgot';renderModal();break}closeModal();var tg=telegramAppUrl('Hello, I need help recovering my KinoQuiz password.');window.location.href=tg;setTimeout(function(){window.open('https://t.me/'+supportHandle(S.bot||SUPPORT_USER),'_blank','noopener')},900);break;}
+
+  case 'pickavatar':{var af=$('#avatarfile');if(af)af.click();break}
+  case 'clearavatar':saveProfile({avatar:''});render();toast(L('Rasm o‘chirildi','Фото удалено','Photo removed'));break;
+  case 'tgconnect':{
+   var apiT=kq();if(!apiT){toast(L('Server ulanmoqda…','Подключение к серверу…','Connecting to the server…'));break}
+   apiT.createLinkCode().then(function(code){
+    S.tgCode={code:code,exp:Date.now()+600000};S.tgWaiting=true;renderMain();
+    try{window.open('https://t.me/'+supportHandle(S.bot||SUPPORT_USER)+'?start=link_'+code,'_blank','noopener')}catch(e){}
+   }).catch(kqFail);break}
+  case 'closemodal':closeModal();break;
+  case 'rmadmin':{var ar=kq();if(ar&&confirm(L('Adminni o‘chirishni tasdiqlaysizmi?','Удалить администратора?','Remove this admin?')))ar.removeAdmin(id).then(function(){S.admins=undefined;render()},function(er){toast(er.message)});break}
+  
+  case 'authmode':S.auth.mode=v;renderModal();break;
+  case 'logout':S.forcePw=false;lastLoginPw='';closeModal(true);S.session=null;sv('session',null,true);S.play=null;if(kq())kq().signOut();render();break;
+  case 'nfilter':S.filter=v;renderMain();break;
+  case 'delnews':S.news=S.news.filter(function(n){return n.id!==id});sv('news',S.news);render();break;
+  case 'startplay':startPlay(id);break;
+  case 'addfriendtostage':if(!S.lobbyPlayers.some(function(n){return n.toLowerCase()===v.toLowerCase()})){S.lobbyPlayers.push(v);sv('lobbyPlayers',S.lobbyPlayers);renderMain()}break;
+  case 'removefriend':S.friends=S.friends.filter(function(n){return n!==v});S.lobbyPlayers=S.lobbyPlayers.filter(function(n){return n!==v});sv('friends',S.friends);sv('lobbyPlayers',S.lobbyPlayers);renderMain();break;
+  case 'removeplayer':S.lobbyPlayers=S.lobbyPlayers.filter(function(n){return n!==v});sv('lobbyPlayers',S.lobbyPlayers);renderMain();break;
+  case 'startlobby':{var nameField=$('#player-name'),playerName=nameField?nameField.value.trim():'';if(playerName)sv('playerName',playerName);var roster=S.lobbyPlayers.slice();if(playerName){if(roster.length===1&&roster[0]==='Player 1')roster[0]=playerName;else if(!roster.some(function(n){return n.toLowerCase()===playerName.toLowerCase()}))roster.unshift(playerName);}var coll=$('#lobby-collection');if(!coll||!coll.value){toast(S.lang==='uz'?'Avval viktorinani tanlang':S.lang==='ru'?'Сначала выберите викторину':'Choose a quiz collection first.');break}if(roster.length<2){toast(S.lang==='uz'?'Birgalikda o‘ynash uchun kamida 2 o‘yinchi qo‘shing':S.lang==='ru'?'Добавьте минимум двух игроков':'Add at least two players to play together.');break}S.lobbyPlayers=roster;sv('lobbyPlayers',roster);startPlay(coll.value,roster);break}
+  case 'cartadd':{var prod=S.products.filter(function(x){return x.id===id})[0];if(!prod||prod.stock<=0)break;var item=S.cart.filter(function(x){return x.id===id})[0];if(item){if(item.qty<prod.stock)item.qty++}else S.cart.push({id:id,qty:1});sv('cart',S.cart);renderMain();break}
+  case 'cartminus':{var itc=S.cart.filter(function(x){return x.id===id})[0];if(itc){itc.qty--;if(itc.qty<=0)S.cart=S.cart.filter(function(x){return x.id!==id});sv('cart',S.cart);renderMain()}break}
+  case 'cartremove':S.cart=S.cart.filter(function(x){return x.id!==id});sv('cart',S.cart);renderMain();break;
+  case 'deleteproduct':S.products=S.products.filter(function(x){return x.id!==id});S.cart=S.cart.filter(function(x){return x.id!==id});sv('products',S.products);sv('cart',S.cart);renderMain();break;
+  case 'submitanswer':{var p=S.play;if(!p||p.picked!==null||p.locked)break;var field=$('#answerinput'),it=p.items[p.i],value=field?field.value.trim():'';if(!value){toast(S.lang==='uz'?'Javobni kiriting':S.lang==='ru'?'Введите ответ':'Please enter an answer.');break}p.answerValue=value;p.tries=(p.tries||0)+1;var correct=answerMatches(value,it.answer);if(correct){p.picked=true;p.lastWrong=false;setTimeout(fxBurst,80);var b=p.by[it.cat]||(p.by[it.cat]={r:0,n:0});b.n++;b.r++;p.score++;var currentPlayer=p.players&&p.players[p.playerIndex];if(currentPlayer)p.playerScores[currentPlayer]=(p.playerScores[currentPlayer]||0)+1;}else{p.lastWrong=true;p.answerValue='';if(p.tries>=3){p.picked=false;p.locked=true;var b2=p.by[it.cat]||(p.by[it.cat]={r:0,n:0});b2.n++;}}renderMain();break}
+  case 'playclip':playOneSecondClip();break;
+  case 'nextq':{var p2=S.play;if(p2.i+1>=p2.items.length){p2.done=true;p2.seconds=Math.max(1,Math.round((Date.now()-p2.startedAt)/1000));var titleForRank=(colById(p2.cid)||{}).title||p2.cid;(p2.players&&p2.players.length?p2.players:[me()]).forEach(function(playerName){var individual=p2.playerScores?Number(p2.playerScores[playerName]||0):p2.score;S.ranks.push({name:playerName,title:titleForRank,score:individual,total:p2.items.length,correct:individual,seconds:p2.seconds,at:Date.now(),local:!S.session})});S.ranks=S.ranks||[];sv('ranks',S.ranks);var sc=S.scores[me()]||(S.scores[me()]={});var old=sc[p2.cid];var pct=p2.score/p2.items.length;if(!old||pct>old.s/old.n)sc[p2.cid]={s:p2.score,n:p2.items.length};sv('scores',S.scores);if(p2.score/p2.items.length>=.5)setTimeout(function(){fxConfetti(true)},300)}else{p2.i++;if(p2.players&&p2.players.length>1)p2.playerIndex=(p2.playerIndex+1)%p2.players.length;p2.picked=null;p2.answerValue='';p2.tries=0;p2.lastWrong=false;p2.locked=false;p2.clipPlayed=false;p2.clipDone=false;p2.clipTimer=null}renderMain();window.scrollTo(0,0);break}
+  case 'unlock':{var l=S.purchased[me()]||(S.purchased[me()]=[]);l.push(id);sv('purchased',S.purchased);toast(t('unlock_note'));renderMain();break}
+  case 'delcol':S.cols=S.cols.filter(function(c){return c.id!==id});sv('cols',S.cols);renderMain();break;
+  case 'addroundq':{var ri=+v,box=$('#round-questions-'+ri);if(box){var count=box.querySelectorAll('.round-question').length;box.insertAdjacentHTML('beforeend',roundQuestion(ri,count))}break;}
+  case 'addactorslot':{var aq=Number(v),acard=el.closest('.round-question'),slots=acard&&acard.querySelector('.media-slots');if(slots){var nextSlot=slots.querySelectorAll('.media-slot').length;slots.insertAdjacentHTML('beforeend',mediaSlot(3,aq,nextSlot,'Media '+(nextSlot+1)))}break;}
+  case 'removeroundq':{var rbox=$('#round-questions-'+(+v));if(rbox&&rbox.querySelectorAll('.round-question').length>1){var card=el.closest('.round-question');if(card)card.remove();renumberRound(rbox,+v)}else if(rbox){var card2=el.closest('.round-question');if(card2)card2.querySelectorAll('input,textarea').forEach(function(x){x.value=''});}break;}
+  case 'suggestq':S.qs.forEach(function(x){if(x.id===id)x.status='pending'});sv('qs',S.qs);toast(t('sent'));renderMain();break;
+  case 'delq':S.qs=S.qs.filter(function(x){return x.id!==id});sv('qs',S.qs);renderMain();break;
+  case 'approve':S.qs.forEach(function(x){if(x.id===id)x.status='approved'});sv('qs',S.qs);renderMain();break;
+  case 'reject':S.qs.forEach(function(x){if(x.id===id)x.status='rejected'});sv('qs',S.qs);renderMain();break;
+  case 'mode':S.theme.mode=v;sv('theme',S.theme);applyTheme();renderMain();break;
+  case 'accent':S.theme.accent=v;sv('theme',S.theme);applyTheme();renderMain();break;
+  case 'resettheme':S.theme={mode:'system',accent:DEFAULT_ACCENT};sv('theme',S.theme);applyTheme();renderMain();break;
+ }
+});
+document.addEventListener('input',function(e){
+ if(e.target.id==='searchbox'){S.q=e.target.value;renderMain();renderRail()}
+ if(e.target.id==='answerinput'&&S.play)S.play.answerValue=e.target.value;
+ if(e.target.id==='accentpick'){S.theme.accent=e.target.value;sv('theme',S.theme);applyTheme()}
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();
+ if(e.key==='Tab'){var md=$('#modal');if(md&&!md.hidden){var fo=md.querySelectorAll('button,input,a[href]');if(fo.length){var first=fo[0],last=fo[fo.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}}}
+ if(e.key==='Enter'&&S.play&&!S.play.done&&S.play.picked!==null&&e.target&&e.target.tagName!=='BUTTON'&&$('#modal').hidden){var nb=document.querySelector('[data-a=nextq]');if(nb){e.preventDefault();nb.click()}}if(e.key==='Enter'&&e.target&&e.target.id==='answerinput'){e.preventDefault();var b=document.querySelector('[data-a=submitanswer]');if(b)b.click()}});
+document.addEventListener('submit',async function(e){
+ var f=e.target;var k=f.dataset.form;if(!k)return;e.preventDefault();
+ var fd=new FormData(f);var g=function(n){return String(fd.get(n)||'').trim()};
+ if(k==='resetemail'){var ak=kq();if(!ak)return;ak.resetEmail($('#rse').value.trim()).then(function(){setErrText(L('Agar bu email ro‘yxatda bo‘lsa, havola yuborildi.','Если email зарегистрирован, ссылка отправлена.','If that email has an account, a reset link was sent.'))},function(){setErrText(L('Yuborib bo‘lmadi.','Не удалось отправить.','Could not send.'))});return}
+  if(k==='addadmin'){var aa=kq();if(!aa)return;aa.addAdmin(g('email')).then(function(r){var how={telegram:L('Telegram orqali yuborildi','Отправлено в Telegram','Sent via Telegram'),email:L('Email orqali yuborildi','Отправлено по email','Sent by email')}[r.sent];if(how)toast(how+' ✓');else window.prompt(L('Bot/email yo‘q. Vaqtinchalik parolni bir marta nusxalang va shaxsga bering:','Нет бота/email. Скопируйте временный пароль один раз и передайте:','No bot/email available. Copy this temporary password once and give it to the person:'),r.tempPassword);f.reset();S.admins=undefined;render()},function(er){toast(er.message||'Error')});return}
+  if(k==='adminlogin'){
+  if($('#au').value.trim()===ADMIN.u&&$('#ap').value===ADMIN.p)loginOk(ADMIN.u,'admin');else setErr('login_err');
+ }else if(k==='login'||k==='signup'){
+  var u=$('#vu').value.trim(),pw=$('#vp').value,un=(($('#vn')||{}).value||'').trim();if(!u||!pw||(FB_ON&&k==='signup'&&!un)){setErr('fill');return}
+  if(FB_ON){
+   var api=kq();
+   if(!api){setErrText(L('Server ulanmoqda… bir necha soniyadan so‘ng qayta urinib ko‘ring.','Подключение к серверу… попробуйте через несколько секунд.','Connecting to the server… try again in a few seconds.'));return}
+   if(!/^\S+@\S+\.\S+$/.test(u)){setErrText(L('To‘g‘ri email kiriting.','Введите корректный email.','Enter a valid email address.'));return}
+   if(k==='signup'&&!/^[A-Za-z0-9._-]{3,24}$/.test(un)){setErrText(L('Login 3–24 belgi: lotin harflari, raqamlar, . _ -','Логин 3–24 символа: латиница, цифры, . _ -','Username: 3–24 characters, letters, numbers, . _ -'));return}
+   if(pw.length<6){setErrText(L('Parol kamida 6 belgidan iborat bo‘lsin.','Пароль — минимум 6 символов.','Password must be at least 6 characters.'));return}
+   var map={'auth/invalid-credential':'login_err','auth/invalid-login-credentials':'login_err','auth/wrong-password':'login_err','auth/user-not-found':'login_err','auth/email-already-in-use':'email_exists','auth/username-taken':'exists'};
+   lastLoginPw=pw;
+   (k==='signup'?api.signUp(u,un,pw):api.signIn(u,pw)).then(function(){closeModal();if(k==='signup'){go('profile');toast(L('Xush kelibsiz! Profilni to‘ldiring va Telegramni ulang.','Добро пожаловать! Заполните профиль и подключите Telegram.','Welcome! Fill in your profile and connect Telegram.'))}},function(err){var c=err&&err.code||'';if(map[c])setErr(map[c]);else setErrText(c==='auth/too-many-requests'?L('Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.','Слишком много попыток. Попробуйте позже.','Too many attempts. Try again later.'):c==='auth/network-request-failed'?L('Internet aloqasi yo‘q.','Нет подключения к сети.','Network error.'):(c||'Error'))});
+   return;
+  }
+  if(k==='login'&&u===ADMIN.u&&pw===ADMIN.p){loginOk(ADMIN.u,'admin');return}
+  var users=ld('users',[]);
+  hashPw(pw).then(function(h){
+   var found=users.filter(function(x){return x.u.toLowerCase()===u.toLowerCase()})[0];
+   if(k==='signup'){
+    if(found||u.toLowerCase()===ADMIN.u){setErr('exists');return}
+    users.push({u:u,h:h});sv('users',users);loginOk(u,'visitor');
+   }else{
+    if(found&&found.h===h)loginOk(found.u,'visitor');else setErr('login_err');
+   }
+  });
+ }else if(k==='friend'){
+  var friend=g('friend').replace(/\s+/g,' ').trim();if(!friend)return;
+  if(!S.friends.some(function(x){return x.toLowerCase()===friend.toLowerCase()})){S.friends.push(friend);sv('friends',S.friends);if(S.lobbyPlayers.length<2){S.lobbyPlayers.push(friend);sv('lobbyPlayers',S.lobbyPlayers)}}
+  renderMain();toast(S.lang==='uz'?'Do‘st qo‘shildi':S.lang==='ru'?'Друг добавлен':'Friend added');
+ }else if(k==='product'){
+  var name=g('name'),price=Math.max(0,Number(g('price'))||0),stock=Math.max(0,parseInt(g('stock'),10)||0),imageUrl=g('image');
+  if(imageUrl&&!/^https?:\/\//i.test(imageUrl)){toast('Please enter a valid image URL.');return}
+  S.products.push({id:'p'+Date.now(),name:name,description:g('description'),price:price,stock:stock,image:imageUrl,createdAt:Date.now()});sv('products',S.products);toast(S.lang==='uz'?'Mahsulot saqlandi':S.lang==='ru'?'Товар сохранён':'Product saved');renderMain();
+ }else if(k==='checkout'){
+  var buyer=g('buyer'),contact=g('contact');if(!S.cart.length){toast('Your cart is empty.');return}
+  if(FB_ON){
+   if(!S.session){toast(L('Buyurtma berish uchun avval tizimga kiring.','Войдите, чтобы оформить заказ.','Please sign in to place an order.'));openLogin();return}
+   var apiO=kq();if(!apiO){toast(L('Server ulanmoqda…','Подключение к серверу…','Connecting to the server…'));return}
+   var ob=f.querySelector('button[type=submit]');if(ob)ob.disabled=true;
+   apiO.placeOrder({name:buyer,contact:contact,items:S.cart.map(function(x){return {id:x.id,qty:x.qty}})}).then(function(r){
+    S.cart=[];sv('cart',S.cart);renderMain();toast(L('Buyurtma qabul qilindi: ','Заказ принят: ','Order placed: ')+r.id);
+   },function(err){
+    if(ob)ob.disabled=false;var c=err&&err.code;
+    toast(c==='stock'?L('Omborda yetarli mahsulot yo‘q'+(err.product?': '+err.product:''),'Недостаточно товара на складе'+(err.product?': '+err.product:''),'Not enough stock'+(err.product?' for '+err.product:'')):c==='auth'?L('Qayta tizimga kiring.','Войдите заново.','Please sign in again.'):c==='not_found'?L('Mahsulot topilmadi. Sahifani yangilang.','Товар не найден. Обновите страницу.','A product in your cart no longer exists.'):L('Buyurtmani yuborib bo‘lmadi.','Не удалось отправить заказ.','Could not place the order.'));
+   });
+   return;
+  }
+  var lines=S.cart.map(function(x){var pr=S.products.filter(function(z){return z.id===x.id})[0];return pr?pr.name+' × '+x.qty:''}).filter(Boolean).join(', '),sum=S.cart.reduce(function(n,x){var pr=S.products.filter(function(z){return z.id===x.id})[0];return n+(pr?pr.price*x.qty:0)},0);
+  var order={id:'o'+Date.now(),name:buyer,contact:contact,lines:lines,total:sum,status:'Prepared',createdAt:Date.now()};S.orders.push(order);S.cart.forEach(function(x){var pr=S.products.filter(function(z){return z.id===x.id})[0];if(pr)pr.stock=Math.max(0,pr.stock-x.qty)});sv('orders',S.orders);sv('products',S.products);
+  var message='KinoQuiz Store order\nName: '+buyer+'\nContact: '+contact+'\nItems: '+lines+'\nTotal: $'+sum.toFixed(2);
+  S.cart=[];sv('cart',S.cart);renderMain();
+  var share='https://t.me/share/url?url=&text='+encodeURIComponent(message);window.open(share,'_blank','noopener');toast(S.lang==='uz'?'Buyurtma Telegramda yuborish uchun tayyor':S.lang==='ru'?'Заказ подготовлен для отправки в Telegram':'Order prepared for Telegram sharing');
+ }else if(k==='news'){
+  S.news.push({id:'n'+Date.now(),cat:g('cat'),date:g('date'),title:g('title'),about:g('about'),source:g('source'),url:g('url'),sample:false});sv('news',S.news);toast(t('added'));renderMain();
+ }else if(k==='col'){
+  var items=[];
+  function fieldUrl(name){var v=g(name);if(v&&!/^https?:\/\//i.test(v))throw new Error('Please use a valid http:// or https:// media link.');return v}
+  async function collectAsset(card,ri,qi,slot){
+   var url=fieldUrl('media'+ri+'_'+qi+'_'+slot),inp=card.querySelector('[name="upload'+ri+'_'+qi+'_'+slot+'"]'),file=inp&&inp.files&&inp.files[0];
+   if(url&&file)throw new Error('For each media slot, choose either a URL or an uploaded file, not both.');
+   if(file){if(file.size>40*1024*1024)throw new Error('Each uploaded media file must be 40 MB or smaller.');return kq()?await kq().upload(file):await saveMediaFile(file)}
+   if(url)return {ref:url,type:mediaTypeFromUrl(url),name:''};
+   return null;
+  }
+  try{
+   for(var i=0;i<7;i++){
+    var section=document.querySelector('[data-round="'+i+'"]');
+    var cards=section?section.querySelectorAll('.round-question'):[];
+    var sectionCount=0;
+    for(var j=0;j<cards.length;j++){
+     var card=cards[j],q=g('q'+i+'_'+j),answer=g('answer'+i+'_'+j),media='',mediaItems=[];
+     if(!q&&!answer){continue}
+     if(!q||!answer)throw new Error('Please complete the question and its single correct answer in round '+(i+1)+', question '+(j+1)+'.');
+     if(i===3){
+      var mediaSlots=card.querySelectorAll('.media-slot');for(var ms=0;ms<mediaSlots.length;ms++){var slot=Number(mediaSlots[ms].getAttribute('data-slot'));var asset=await collectAsset(card,i,j,slot);if(asset)mediaItems.push(asset)}
+      if(mediaItems.length<3)throw new Error('Round 4 requires at least 3 media items for every question. Add three URLs or uploads in question '+(j+1)+'.');
+     }else if(i===4){var charAsset=await collectAsset(card,i,j,0);if(charAsset)mediaItems.push(charAsset)}
+     else{
+      media=fieldUrl('media'+i+'_'+j);
+      if((i===1||i===2||i===6)&&!media)throw new Error('Please add the required image, audio or one-second video URL in round '+(i+1)+', question '+(j+1)+'.');
+     }
+     items.push({cat:i,q:q,answer:answer,media:media,mediaItems:mediaItems});sectionCount++;
+    }
+    if(!sectionCount)throw new Error('Please add at least one question to each of the seven rounds. Round '+(i+1)+' is empty.');
+   }
+   var title=g('title');if(!title)throw new Error('Please enter a collection title.');
+   var price=Math.max(0,parseFloat(g('price'))||0);
+   S.cols.push({id:'c'+Date.now(),title:title,paid:price>0,price:price,items:items});sv('cols',S.cols);S.view='quiz';S.q='';if(location.hash.slice(1)!=='quiz')location.hash='quiz';render();toast(t('added'));
+  }catch(err){var er=$('#colerr');if(er)er.textContent=err.message||'Could not save this collection.';else toast(err.message||'Could not save this collection.');}
+ }else if(k==='q'){
+  var act=e.submitter&&e.submitter.value==='private'?'private':'pending';
+  S.qs.push({id:'q'+Date.now(),by:S.session.name,cat:+g('cat'),q:g('q'),o:[g('o0'),g('o1'),g('o2'),g('o3')],status:act,ts:Date.now()});sv('qs',S.qs);toast(act==='pending'?t('sent'):t('saved'));renderMain();
+
+ }else if(k==='profile'){
+  var pe=$('#proferr'),tgRaw=g('telegram'),igRaw=g('instagram'),web=g('website');
+  var tgH=tgRaw?handleClean(tgRaw,'tg'):'',igH=igRaw?handleClean(igRaw,'ig'):'';
+  if(tgRaw&&!tgH){if(pe)pe.textContent=L('Telegram nomi noto‘g‘ri (5–32 belgi: harf, raqam, _).','Неверное имя Telegram (5–32 символа: буквы, цифры, _).','Telegram username looks wrong (5–32 characters: letters, numbers, _).');return}
+  if(igRaw&&!igH){if(pe)pe.textContent=L('Instagram nomi noto‘g‘ri.','Неверное имя Instagram.','Instagram username looks wrong.');return}
+  if(web&&!/^https?:\/\/[^\s]+$/i.test(web)){if(pe)pe.textContent=L('Sayt manzili http:// yoki https:// bilan boshlansin.','Адрес сайта должен начинаться с http:// или https://.','Website must start with http:// or https://');return}
+  saveProfile({displayName:g('displayName').slice(0,40),city:g('city').slice(0,40),bio:g('bio').slice(0,160),movie:g('movie').slice(0,60),genres:fd.getAll('genre').filter(function(x){return GENRES.indexOf(x)>-1}),telegram:tgH,instagram:igH,website:web});
+  render();toast(L('Profil saqlandi ✓','Профиль сохранён ✓','Profile saved ✓'));
+ }else if(k==='chpw'){
+  var pw0=g('cur'),n1=g('n1'),n2=g('n2'),perr=$('#pwerr'),minL=FB_ON?6:4;
+  if(n1!==n2){if(perr)perr.textContent=L('Yangi parollar mos emas.','Новые пароли не совпадают.','The new passwords do not match.');return}
+  if(n1.length<minL){if(perr)perr.textContent=L('Parol juda qisqa.','Пароль слишком короткий.','Password is too short.');return}
+  if(n1===pw0){if(perr)perr.textContent=L('Yangi parol eskisidan farq qilsin.','Новый пароль должен отличаться.','Choose a password different from the current one.');return}
+  if(FB_ON){
+   var apiP=kq();if(!apiP)return;
+   apiP.changePassword(pw0,n1).then(function(){f.reset();toast(L('Parol yangilandi ✓','Пароль обновлён ✓','Password updated ✓'))},function(err){if(perr)perr.textContent=pwError(err)});
+  }else{
+   var us=ld('users',[]),fu=us.filter(function(x){return S.session&&x.u.toLowerCase()===S.session.name.toLowerCase()})[0];
+   var h0=await hashPw(pw0);if(!fu||fu.h!==h0){if(perr)perr.textContent=pwError({code:'auth/wrong-password'});return}
+   fu.h=await hashPw(n1);sv('users',us);f.reset();toast(L('Parol yangilandi ✓','Пароль обновлён ✓','Password updated ✓'));
+  }
+ }else if(k==='forcepw'){
+  var fe=$('#autherr'),c0=lastLoginPw||(($('#fp0')||{}).value||''),p1=$('#fp1').value,p2=$('#fp2').value;
+  if(p1!==p2){if(fe)fe.textContent=L('Yangi parollar mos emas.','Новые пароли не совпадают.','The new passwords do not match.');return}
+  if(p1.length<6){if(fe)fe.textContent=L('Parol kamida 6 belgi.','Пароль — минимум 6 символов.','Password must be at least 6 characters.');return}
+  if(p1===c0){if(fe)fe.textContent=L('Yangi parol vaqtinchalikdan farq qilsin.','Новый пароль должен отличаться от временного.','Choose a password different from the temporary one.');return}
+  var apiF=kq();if(!apiF)return;
+  apiF.changePassword(c0,p1).then(function(){lastLoginPw='';S.forcePw=false;closeModal(true);toast(L('Yangi parol o‘rnatildi ✓','Новый пароль установлен ✓','New password saved ✓'))},function(err){
+   if((err&&err.code||'').indexOf('auth/')===0&&/credential|wrong-password/.test(err.code)){lastLoginPw='';renderForcePwModal();var e2=$('#autherr');if(e2)e2.textContent=pwError(err)}else if(fe)fe.textContent=pwError(err);
+  });
+ }else if(k==='bot'){
+  var v=g('bot');S.bot=supportHandle(v||SUPPORT_USER);sv('bot',S.bot);toast(t('saved'));renderMain();
+ }
+});
+window.addEventListener('hashchange',function(){var h=location.hash.slice(1);if(h==='theme')h='profile';if(VIEWS_LIST.indexOf(h)>-1&&h!==S.view){S.view=h;S.q='';S.play=null;render()}});
+
+/* ---------- v8: motion + 3D engine ---------- */
+var FX_REDUCE=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+var fxLastKey='',fxTilt=null,fxCanvas=null,fxParts=[],fxRaf=0;
+var FX_COLORS=['#7657F6','#F18A9B','#FFCF71','#35A8A0','#4E8FE8','#FFFFFF'];
+var FX_TILT='.qcard,.round-tile,.store-product,.leaderboard-card';
+function ringHtml(){var cols=['#F4B942','#F06B86','#8B6CF6','#35A8A0','#4E8FE8','#E28A45','#D65FA4'],gl=['✦','▧','♫','✧','◈','❝','▶'];return cols.map(function(c,i){return '<i style="--i:'+i+';--c:'+c+'"><b>'+gl[i]+'</b></i>'}).join('')}
+function fxResetTilt(el){if(!el)return;el.classList.remove('tilting');['--rx','--ry','--mx','--my'].forEach(function(k){el.style.removeProperty(k)})}
+document.addEventListener('pointermove',function(e){
+ if(FX_REDUCE||e.pointerType!=='mouse')return;
+ var tg=e.target&&e.target.closest?e.target:null;if(!tg)return;
+ var hero=tg.closest('.dashboard-hero'),art=hero&&document.getElementById('heroart');
+ if(art){var hr=hero.getBoundingClientRect();art.style.setProperty('--hy',(((e.clientX-hr.left)/hr.width-.5)*28).toFixed(1)+'deg');art.style.setProperty('--hx',((-((e.clientY-hr.top)/hr.height-.5))*22).toFixed(1)+'deg')}
+ var el=tg.closest(FX_TILT);
+ if(fxTilt&&fxTilt!==el)fxResetTilt(fxTilt);
+ fxTilt=el;if(!el)return;
+ var r=el.getBoundingClientRect(),px=(e.clientX-r.left)/r.width,py=(e.clientY-r.top)/r.height;
+ el.classList.add('tilting');
+ el.style.setProperty('--ry',((px-.5)*13).toFixed(2)+'deg');el.style.setProperty('--rx',((.5-py)*13).toFixed(2)+'deg');
+ el.style.setProperty('--mx',(px*100).toFixed(1)+'%');el.style.setProperty('--my',(py*100).toFixed(1)+'%');
+},{passive:true});
+document.addEventListener('pointerleave',function(){if(fxTilt){fxResetTilt(fxTilt);fxTilt=null}},true);
+document.addEventListener('pointerout',function(e){if(fxTilt&&!(e.relatedTarget&&fxTilt.contains(e.relatedTarget))){fxResetTilt(fxTilt);fxTilt=null}});
+
+function fxCanvasEl(){
+ if(!fxCanvas){fxCanvas=document.createElement('canvas');fxCanvas.className='fx-canvas';fxCanvas.setAttribute('aria-hidden','true');document.body.appendChild(fxCanvas);window.addEventListener('resize',fxSize)}
+ fxSize();return fxCanvas;
+}
+function fxSize(){if(!fxCanvas)return;var d=Math.min(window.devicePixelRatio||1,2);fxCanvas.width=Math.round(innerWidth*d);fxCanvas.height=Math.round(innerHeight*d);fxCanvas.getContext('2d').setTransform(d,0,0,d,0,0)}
+function fxSpawn(x,y,n,angle,spread,power){
+ for(var i=0;i<n;i++){var a=angle+(Math.random()-.5)*spread,sp=power*(.45+Math.random()*.75);
+  fxParts.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,rot:Math.random()*6.28,vr:(Math.random()-.5)*.35,w:5+Math.random()*7,h:3+Math.random()*5,c:FX_COLORS[Math.floor(Math.random()*FX_COLORS.length)],life:90+Math.random()*60})}
+ if(!fxRaf)fxRaf=requestAnimationFrame(fxLoop);
+}
+function fxLoop(){
+ var c=fxCanvas;if(!c){fxRaf=0;return}
+ var g=c.getContext('2d');g.clearRect(0,0,innerWidth,innerHeight);
+ fxParts=fxParts.filter(function(p){return p.life>0&&p.y<innerHeight+30});
+ fxParts.forEach(function(p){p.vy+=.28;p.vx*=.992;p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.life--;g.save();g.globalAlpha=Math.min(1,p.life/30);g.translate(p.x,p.y);g.rotate(p.rot);g.fillStyle=p.c;g.fillRect(-p.w/2,-p.h/2,p.w,p.h);g.restore()});
+ if(fxParts.length)fxRaf=requestAnimationFrame(fxLoop);else{fxRaf=0;g.clearRect(0,0,innerWidth,innerHeight)}
+}
+function fxBurst(){
+ if(FX_REDUCE)return;fxCanvasEl();
+ var f=document.getElementById('answerinput'),r=f?f.getBoundingClientRect():{left:innerWidth/2-60,width:120,top:innerHeight/2,height:0};
+ fxSpawn(r.left+r.width/2,r.top+r.height/2,38,-Math.PI/2,Math.PI*1.1,9);
+}
+function fxConfetti(){
+ if(FX_REDUCE)return;fxCanvasEl();
+ fxSpawn(innerWidth*.12,innerHeight*.75,80,-Math.PI/3,.9,17);
+ fxSpawn(innerWidth*.88,innerHeight*.75,80,-Math.PI*2/3,.9,17);
+ setTimeout(function(){fxSpawn(innerWidth/2,innerHeight*.35,70,-Math.PI/2,Math.PI*1.4,11)},350);
+}
+function fxInit(){document.body.insertAdjacentHTML('afterbegin','<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>')}
+fxInit();
+
+var h0=location.hash.slice(1);if(h0==='theme')h0='profile';if(VIEWS_LIST.indexOf(h0)>-1)S.view=h0;
+render();
+})();
+</script>
+<script src="firebase-bridge.js"></script>
+
+</body></html>

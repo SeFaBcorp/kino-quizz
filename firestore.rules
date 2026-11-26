@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.role in ['admin','owner']; }
+
+    match /{col}/{id} {
+      allow read: if col in ['news','cols','products','ranks'];
+      allow write: if col in ['news','cols','products'] && isAdmin();
+    }
+    match /products/{id} {   // buyers may only lower stock
+      allow update: if signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock'])
+                       && request.resource.data.stock < resource.data.stock && request.resource.data.stock >= 0;
+    }
+    match /ranks/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+    match /orders/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role == 'user' && request.resource.data.mustChange == false;
+      allow update: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scores','purchased','profile','mustChange'])
+                    && request.resource.data.mustChange == false;
+    }
+    match /usernames/{n} {
+      allow get: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+    match /tgCodes/{c} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+    match /tgLinks/{uid} { allow read: if signedIn() && request.auth.uid == uid; }
+    match /settings/{d} { allow read: if true; allow write: if isAdmin(); }
+  }
+}
