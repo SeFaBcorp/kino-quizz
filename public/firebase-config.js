@@ -62,6 +62,8 @@ window.addEventListener('load',function(){
    var code=Math.random().toString(36).slice(2,8).toUpperCase();
    return db.doc('tgCodes/'+code).set({uid:auth.currentUser.uid,exp:Date.now()+600000}).then(function(){return code})
   },
+  changeUsername:function(name){return call('/api/username','POST',{username:name})},
+  mediaInfo:function(url){return call('/api/media-info?url='+encodeURIComponent(url),'GET')},
   listAdmins:function(){return call('/api/admins','GET')},
   addAdmin:function(email){return call('/api/admins','POST',{email:email})},
   removeAdmin:function(uid){return call('/api/admins/remove','POST',{uid:uid})}
@@ -93,16 +95,16 @@ window.addEventListener('load',function(){
  auth.onAuthStateChanged(function(user){
   stopAll();startPublic();gen++;
   if(!user){app().onSession(null);return}
-  var uid=user.uid,g=gen,lastRole=null;
+  var uid=user.uid,g=gen,lastRole=null,lastName=null;
   var timer=setTimeout(function(){if(!sessionSent&&g===gen){sessionSent=true;app().onSession({uid:uid,name:(user.email||'user').split('@')[0],email:user.email,role:'user',rank:'user'})}},9000);
   userUnsub=db.doc('users/'+uid).onSnapshot(function(s){
    var d=s.data();if(!d||g!==gen)return;
    var isAdm=d.role==='admin'||d.role==='owner';
-   if(!sessionSent||lastRole!==d.role){
+   if(!sessionSent||lastRole!==d.role||lastName!==d.username){
     sessionSent=true;clearTimeout(timer);
     app().onSession({uid:uid,name:d.username||user.email.split('@')[0],email:user.email,role:isAdm?'admin':'user',rank:d.role});
    }
-   lastRole=d.role;app().onUserDoc(d);
+   lastRole=d.role;lastName=d.username;app().onUserDoc(d);
    attachOrders(user,isAdm,g);
   },function(e){app().onError(e)});
   unsub.push(db.doc('tgLinks/'+uid).onSnapshot(function(s){app().onTgLink(s.exists?s.data():null)}));

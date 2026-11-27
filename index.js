@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import path from 'path';
 import fs from 'fs';
+import dns from 'node:dns/promises';
+import net from 'node:net';
 import { fileURLToPath } from 'url';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -249,6 +251,58 @@ app.post('/api/session', needUser, wrap(async (req, res) => {
   }
   if ((u.customClaims || {}).role !== d.role) await auth.setCustomUserClaims(u.uid, { ...(u.customClaims || {}), role: d.role });
   res.json({ role: d.role, username: d.username, email });
+}));
+
+// A signed-in member changes their own login name (the e-mail stays as it is).
+app.post('/api/username', needUser, wrap(async (req, res) => {
+  const uid = req.user.uid, name = String(req.body.username || '').trim();
+  if (!allow('un:' + uid, 10, 3600e3)) return res.status(429).json({ code: 'rate', error: 'Too many attempts, try later.' });
+  if (!USERNAME_RE.test(name)) return res.status(400).json({ code: 'bad-username', error: 'Invalid username' });
+  if (RESERVED.includes(name.toLowerCase())) return res.status(409).json({ code: 'username-taken', error: 'Username taken' });
+  const uref = db.doc('users/' + uid), old = String(((await uref.get()).data() || {}).username || '');
+  if (old.toLowerCase() === name.toLowerCase()) { await uref.set({ username: name }, { merge: true }); return res.json({ ok: true, username: name }); }   // only the letter case changed
+  try { await db.doc('usernames/' + name.toLowerCase()).create({ uid }); }
+  catch { return res.status(409).json({ code: 'username-taken', error: 'Username taken' }); }
+  await uref.set({ username: name }, { merge: true });
+  if (old) { const oref = db.doc('usernames/' + old.toLowerCase()), os = await oref.get(); if (os.exists && os.data().uid === uid) await oref.delete(); }
+  res.json({ ok: true, username: name });
+}));
+
+// "Read any link": for a web page (IMDb, Pinterest, a blog...) find its preview picture. Only the picture address is returned.
+const privateIp = ip => {
+  if (net.isIPv4(ip)) { const [a, b] = ip.split('.').map(Number); return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168); }
+  const x = ip.toLowerCase(); return x === '::' || x === '::1' || x.startsWith('fc') || x.startsWith('fd') || x.startsWith('fe80') || (x.startsWith('::ffff:') && privateIp(x.slice(7)));
+};
+async function safeFetch(url) {
+  for (let hop = 0; hop < 4; hop++) {
+    const u = new URL(url);
+    if (!/^https?:$/.test(u.protocol) || (u.port && !['80', '443'].includes(u.port))) throw new Error('bad url');
+    const addrs = await dns.lookup(u.hostname, { all: true });
+    if (!addrs.length || addrs.some(a => privateIp(a.address))) throw new Error('blocked address');
+    const r = await fetch(u, { redirect: 'manual', signal: AbortSignal.timeout(6000), headers: { 'user-agent': 'Mozilla/5.0 (compatible; KinoQuizBot/1.0)', accept: 'text/html,image/*;q=0.8,*/*;q=0.5' } });
+    if (r.status >= 300 && r.status < 400 && r.headers.get('location')) { url = new URL(r.headers.get('location'), u).href; continue; }
+    return r;
+  }
+  throw new Error('too many redirects');
+}
+app.get('/api/media-info', needUser, wrap(async (req, res) => {
+  if (!allow('mi:' + req.user.uid, 60, 600e3)) return res.status(429).json({ code: 'rate', error: 'Too many requests' });
+  const url = String(req.query.url || '').slice(0, 2000);
+  try {
+    const r = await safeFetch(url), ct = (r.headers.get('content-type') || '').toLowerCase().split(';')[0].trim();
+    if (/^(image|video|audio)\//.test(ct)) { r.body && r.body.cancel().catch(() => {}); return res.json({ image: ct.startsWith('image/') ? url : '', media: url, type: ct }); }
+    if (!ct.includes('html') || !r.body) return res.json({});
+    let html = ''; const rd = r.body.getReader(), dec = new TextDecoder();
+    while (html.length < 600000) { const { done, value } = await rd.read(); if (done) break; html += dec.decode(value, { stream: true }); }
+    rd.cancel().catch(() => {});
+    let img = '';
+    for (const m of html.match(/<meta[^>]+>/gi) || []) {
+      const k = /(?:property|name)=["'](og:image(?::secure_url)?|twitter:image(?::src)?)["']/i.exec(m), c = /content=["']([^"']+)["']/i.exec(m);
+      if (k && c) { img = c[1].replace(/&amp;/g, '&'); break; }
+    }
+    if (img) { try { img = new URL(img, url).href; } catch { img = ''; } if (!/^https?:\/\//i.test(img)) img = ''; }
+    res.json(img ? { image: img, type: 'image/*' } : {});
+  } catch { res.json({}); }
 }));
 
 // Owner or co-owner adds an admin. Owners cannot be created here.

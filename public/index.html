@@ -646,6 +646,12 @@ body{background:radial-gradient(ellipse at 85% -15%,rgba(125,91,255,.14),transpa
 .auth-done{display:grid;gap:12px;justify-items:center;text-align:center;padding:6px 0}
 .auth-done .big-ic{font-size:44px}
 .btn.big.link{display:inline-flex;align-items:center;text-decoration:none}
+/* Pictures always sit in a frame of the same size: no stretching, no cut-off tops/bottoms, no giant alt text. */
+.store-product-image{position:relative;height:auto;aspect-ratio:4/3;font-size:42px;line-height:1}
+.store-product-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block;font-size:0}
+.store-product-image.broken img{display:none}
+.quiz-media-item img,.quiz-media-item video{width:100%;height:clamp(220px,46vh,400px);max-height:none;object-fit:contain;object-position:center;font-size:0}
+.quiz-media-item .img-fail{display:grid;place-items:center;height:clamp(160px,30vh,260px);border-radius:12px;background:#100d19;color:#b9b0d8;font-size:14px;text-align:center;padding:16px}
 </style>
 
 <div class="app">
@@ -700,6 +706,24 @@ function mediaTypeFromUrl(url){
  if(/\.(mp4|webm|mov|m4v|ogv)$/.test(u))return'video/*';
  if(/\.(mp3|m4a|wav|ogg|aac|flac)$/.test(u))return'audio/*';
  return'';
+}
+/* Any link or any file: tidy known share links, and for plain web pages ask the server for the page's preview picture. */
+function normalizeMediaUrl(u){
+ u=String(u||'').trim();var m;
+ if((m=u.match(/^https?:\/\/(?:www\.)?imgur\.com\/(?!a\/|gallery\/)([A-Za-z0-9]{5,8})\/?$/i)))return'https://i.imgur.com/'+m[1]+'.jpg';
+ if(/^https?:\/\/(?:www\.)?dropbox\.com\//i.test(u)&&!/[?&]raw=1/.test(u))return u.replace(/[?&]dl=0/,'').replace(/([?&])dl=1/,'$1raw=1')+(/\?/.test(u.replace(/[?&]dl=0/,''))?'&':'?')+'raw=1';
+ return u;
+}
+function isDirectMedia(u){return !!(mediaTypeFromUrl(u)||youtubeId(u)||spotifyEmbedUrl(u)||/drive\.google\.com\//i.test(u)||/^https?:\/\/(?:i\.imgur\.com|upload\.wikimedia\.org|images\.unsplash\.com|firebasestorage\.googleapis\.com)\//i.test(u))}
+async function smartMedia(url,forceImage){
+ url=normalizeMediaUrl(url);var ref={ref:url,type:mediaTypeFromUrl(url),name:''};
+ if(isDirectMedia(url)||!kq()||!kq().mediaInfo)return ref;
+ try{var r=await kq().mediaInfo(url);if(r&&r.image)return{ref:r.image,type:'image/*',name:''};if(r&&r.media)return{ref:r.media,type:r.type||'',name:''}}catch(e){}
+ return ref;
+}
+async function uploadMediaFile(file){
+ if(file.size>25*1024*1024)throw new Error(L('Fayl 25 MB dan kichik bo‘lsin.','Файл должен быть не больше 25 МБ.','Each uploaded file must be 25 MB or smaller.'));
+ return kq()?await kq().upload(file):await saveMediaFile(file);
 }
 function youtubeId(url){
  try{var u=new URL(url);var h=u.hostname.replace(/^www\./,'').toLowerCase(),id='';
@@ -1006,7 +1030,7 @@ function roundQuestion(i,j){
  else if(i===1||i===2||i===6){
   var ml=i===1?(uz?'Poster / sahna rasmi URL':ru?'URL постера или кадра':'Poster / scene image URL'):(i===2?(uz?'YouTube yoki Spotify havolasi (yoki audio fayl URL)':ru?'Ссылка YouTube или Spotify (или URL аудиофайла)':'YouTube or Spotify link (or direct audio file URL)'):(uz?'Video URL (YouTube yoki MP4; faqat 1 soniya)':ru?'Ссылка на видео (YouTube или MP4; только 1 секунда)':'Video URL (YouTube or MP4; only 1 second)'));
   var ph=i===2?'https://youtu.be/...  or  https://open.spotify.com/track/...':(i===6?'https://youtu.be/...  or  https://...mp4':'https://...');
-  media='<label class="media-field">'+ml+'<input type="url" name="media'+i+'_'+j+'" placeholder="'+ph+'" '+(i===1||i===2||i===6?'required':'')+'></label>'+(i===2?'<p class="media-help">'+(uz?'YouTube va Spotify player savol ichida ko‘rinadi. Spotify track, album yoki playlist havolasini qo‘ying.':ru?'Проигрыватель YouTube и Spotify появится прямо в вопросе. Вставьте ссылку на трек, альбом или плейлист Spotify.':'YouTube and Spotify players appear inside the question. Paste a Spotify track, album or playlist link.')+'</p>':(i===6?'<p class="media-help">'+(uz?'YouTube havolasi ham qo‘llanadi. Video player savol ichida ochiladi va 1 soniyadan keyin to‘xtaydi.':ru?'Поддерживается ссылка YouTube. Видео откроется прямо в вопросе и остановится через 1 секунду.':'YouTube links are supported. The video opens inside the question and stops after one second.')+'</p>':''));
+  media='<label class="media-field">'+ml+'<input type="url" name="media'+i+'_'+j+'" placeholder="'+ph+'" inputmode="url"></label><label class="media-field">'+(uz?'Yoki fayl yuklang':ru?'Или загрузите файл':'Or upload a file')+'<input type="file" name="upload'+i+'_'+j+'" accept="'+(i===1?'image/*':i===2?'audio/*':'video/*')+'"></label>'+(i===2?'<p class="media-help">'+(uz?'YouTube va Spotify player savol ichida ko‘rinadi. Spotify track, album yoki playlist havolasini qo‘ying.':ru?'Проигрыватель YouTube и Spotify появится прямо в вопросе. Вставьте ссылку на трек, альбом или плейлист Spotify.':'YouTube and Spotify players appear inside the question. Paste a Spotify track, album or playlist link.')+'</p>':(i===6?'<p class="media-help">'+(uz?'YouTube havolasi ham qo‘llanadi. Video player savol ichida ochiladi va 1 soniyadan keyin to‘xtaydi.':ru?'Поддерживается ссылка YouTube. Видео откроется прямо в вопросе и остановится через 1 секунду.':'YouTube links are supported. The video opens inside the question and stops after one second.')+'</p>':''));
  }
  return '<div class="round-question"><div class="row between"><h4>'+(uz?'SAVOL':ru?'ВОПРОС':'QUESTION')+' '+String(j+1).padStart(2,'0')+'</h4><button class="btn sm danger" type="button" data-a="removeroundq" data-v="'+i+'" aria-label="'+remove+'">'+remove+'</button></div><label>'+qlabel+'<textarea name="q'+i+'_'+j+'" placeholder="'+prompts[i]+'" required></textarea></label>'+media+'<label>'+alabel+'<input type="text" name="answer'+i+'_'+j+'" placeholder="'+answerHint+'" required></label><p class="media-help">'+(uz?'Muqobil javoblar uchun | belgisidan foydalaning, masalan: Garri Potter | Harry Potter':ru?'Для альтернативных ответов используйте |, например: Гарри Поттер | Harry Potter':'Accept alternatives with | , e.g. Spider-Man | Spiderman. Small typos in long titles are forgiven.')+'</p></div>';
 }
@@ -1074,7 +1098,7 @@ var VIEWS={
   var products=S.products.slice().sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0)});
   var count=S.cart.reduce(function(n,x){return n+x.qty},0),total=S.cart.reduce(function(n,x){var p=S.products.filter(function(z){return z.id===x.id})[0];return n+(p?p.price*x.qty:0)},0);
   var productCards=products.map(function(p){return '<article class="card store-product"><div class="store-product-image">'+(p.image?'<img src="'+esc(p.image)+'" alt="'+esc(p.name)+'" loading="lazy">':'<span>✦</span>')+'</div><div class="pad stack" style="gap:9px"><div class="row between"><span class="badge free">'+(p.stock>0?(uz?'Mavjud':ru?'В наличии':'In stock'):(uz?'Tugagan':ru?'Нет в наличии':'Sold out'))+'</span><b class="store-price">$'+Number(p.price).toFixed(2)+'</b></div><h3>'+esc(p.name)+'</h3><p class="muted store-desc">'+esc(p.description||'')+'</p><div class="row between"><span class="muted small-note">'+(uz?'Qoldiq: ':'Stock: ')+Number(p.stock||0)+'</span><button class="btn primary sm" data-a="cartadd" data-id="'+esc(p.id)+'" '+(p.stock>0?'':'disabled')+'>'+(uz?'Savatga':ru?'В корзину':'Add to cart')+'</button></div>'+(isAdmin()?'<button class="btn sm danger" data-a="deleteproduct" data-id="'+esc(p.id)+'">'+(uz?'O‘chirish':ru?'Удалить':'Remove product')+'</button>':'')+'</div></article>'}).join('');
-  var adminForm=isAdmin()?'<details class="card"><summary>'+(uz?'＋ Yangi mahsulot qo‘shish':ru?'＋ Добавить товар':'＋ Add a product')+'</summary><div class="inner"><form class="form" data-form="product"><label>'+(uz?'Mahsulot nomi':ru?'Название товара':'Product name')+'<input type="text" name="name" required></label><label>'+(uz?'Tavsif':ru?'Описание':'Description')+'<textarea name="description"></textarea></label><div class="two"><label>'+(uz?'Narx (USD)':ru?'Цена (USD)':'Price (USD)')+'<input type="number" name="price" min="0" step="0.01" required></label><label>'+(uz?'Ombordagi soni':ru?'Количество':'Stock quantity')+'<input type="number" name="stock" min="0" step="1" value="1" required></label></div><label>'+(uz?'Mahsulot rasmi URL':ru?'URL изображения':'Product image URL')+'<input type="url" name="image" placeholder="https://..."></label><button class="btn primary" type="submit">'+(uz?'Mahsulotni saqlash':ru?'Сохранить товар':'Save product')+'</button></form></div></details>':'';
+  var adminForm=isAdmin()?'<details class="card"><summary>'+(uz?'＋ Yangi mahsulot qo‘shish':ru?'＋ Добавить товар':'＋ Add a product')+'</summary><div class="inner"><form class="form" data-form="product"><label>'+(uz?'Mahsulot nomi':ru?'Название товара':'Product name')+'<input type="text" name="name" required></label><label>'+(uz?'Tavsif':ru?'Описание':'Description')+'<textarea name="description"></textarea></label><div class="two"><label>'+(uz?'Narx (USD)':ru?'Цена (USD)':'Price (USD)')+'<input type="number" name="price" min="0" step="0.01" required></label><label>'+(uz?'Ombordagi soni':ru?'Количество':'Stock quantity')+'<input type="number" name="stock" min="0" step="1" value="1" required></label></div><label>'+(uz?'Rasm havolasi (istalgan havola)':ru?'Ссылка на изображение (любая ссылка)':'Image link (any link)')+'<input type="url" name="image" placeholder="https://..." inputmode="url"></label><label>'+(uz?'Yoki rasm yuklang':ru?'Или загрузите картинку':'Or upload a picture')+'<input type="file" name="imagefile" accept="image/*"></label><p class="media-help">'+(uz?'Havola yoki fayl — bittasini tanlang. Rasm avtomatik bir xil o‘lchamga moslanadi.':ru?'Ссылка или файл — что-то одно. Картинка автоматически подгоняется под единый размер.':'Pick a link or a file, not both. The picture is fitted to one standard size automatically.')+'</p><button class="btn primary" type="submit">'+(uz?'Mahsulotni saqlash':ru?'Сохранить товар':'Save product')+'</button></form></div></details>':'';
   var cartRows=S.cart.map(function(x){var p=S.products.filter(function(z){return z.id===x.id})[0];if(!p)return '';return '<div class="cart-row"><div><b>'+esc(p.name)+'</b><p class="muted small-note">$'+Number(p.price).toFixed(2)+' × '+x.qty+'</p></div><div class="row"><button class="btn sm" data-a="cartminus" data-id="'+esc(p.id)+'">−</button><b>'+x.qty+'</b><button class="btn sm" data-a="cartadd" data-id="'+esc(p.id)+'">＋</button><button class="btn sm danger" data-a="cartremove" data-id="'+esc(p.id)+'">×</button></div></div>'}).join('');
   var orders=isAdmin()&&S.orders.length?'<section class="card pad stack"><h2>'+(uz?'Buyurtmalar':ru?'Заказы':'Recent orders')+'</h2>'+S.orders.slice().reverse().map(function(o){return '<div class="cart-row"><div><b>'+esc(o.name)+' · '+esc(o.contact)+'</b><p class="muted small-note">'+esc(o.lines)+' · $'+Number(o.total).toFixed(2)+'</p></div><span class="badge">'+esc(stLabel(o.status||'New'))+'</span></div>'}).join('')+'</section>':'';
   return '<div class="stack store-page"><div class="store-hero"><span class="eyebrow">KINOQUIZ MARKET</span><h1>'+(uz?'KinoQuiz do‘koni':ru?'Магазин KinoQuiz':'KinoQuiz Store')+'</h1><p>'+(uz?'Sevimli kino olamingiz uchun mahsulotlarni toping.':ru?'Найдите товары из любимого мира кино.':'Discover products for your screen-time lifestyle.')+'</p><span class="store-hero-icon">✦</span></div>'+adminForm+
@@ -1272,7 +1296,7 @@ function profHero(){
  ];
  return '<section class="card prof-hero"><div class="prof-cover" aria-hidden="true"><i></i><i></i><i></i></div>'+
   '<div class="prof-head"><div class="prof-avatar">'+avatarHtml(112,'big')+'<button class="prof-cam" data-a="pickavatar" aria-label="'+esc(L('Rasmni almashtirish','Сменить фото','Change photo'))+'" title="'+esc(L('Rasmni almashtirish','Сменить фото','Change photo'))+'">📷</button><input type="file" id="avatarfile" accept="image/*" hidden></div>'+
-  '<div class="prof-id"><h1>'+esc(dispName())+'</h1><p class="muted">@'+esc(S.session.name)+' · <span class="badge '+(isAdmin()?'paid':'free')+'">'+(isOwner()?L('Egasi','Владелец','Owner'):isAdmin()?'Admin':L('A’zo','Участник','Member'))+'</span></p></div></div>'+
+  '<div class="prof-id"><h1>'+esc(dispName())+'</h1><p class="muted">@'+esc(S.session.name)+' · <span class="badge '+(isAdmin()?'paid':'free')+'">'+(isOwner()?L('Egasi','Владелец','Owner'):isAdmin()?'Admin':L('A’zo','Участник','Member'))+'</span></p>'+(S.session.email?'<p class="muted">✉ '+esc(S.session.email)+'</p>':'')+'</div></div>'+
   (p.avatar?'<button class="text-link prof-rmphoto" data-a="clearavatar">'+esc(L('Rasmni o‘chirish','Удалить фото','Remove photo'))+'</button>':'')+
   '<p class="prof-bio">'+(p.bio?esc(p.bio):'<span class="muted">'+esc(L('O‘zingiz haqingizda yozing — sevimli kino, janr, ijtimoiy tarmoqlar.','Расскажите о себе — любимое кино, жанры, соцсети.','Tell people about yourself — favourite film, genres, socials.'))+'</span>')+'</p>'+
   (chips?'<div class="prof-chips">'+chips+'</div>':'')+(links?'<div class="prof-links">'+links+'</div>':'')+
@@ -1305,6 +1329,13 @@ function profTelegram(){
    :'<p class="muted">'+esc(L('Hisobni ulash onlayn versiyada ishlaydi. Hozircha botni ochib, savol berishingiz mumkin.','Привязка аккаунта работает в онлайн-версии. Пока можно открыть бота и задать вопрос.','Account connection works in the online version. For now you can open the bot and ask a question.'))+'</p>')+
   '<div class="row">'+(FB_ON&&!linked?'<button class="btn primary" data-a="tgconnect">✈️ '+esc(L('Telegramni ulash','Подключить Telegram','Connect Telegram'))+'</button>':'')+'<a class="btn'+(FB_ON&&!linked?'':' primary')+'" href="'+esc(bot)+'" target="_blank" rel="noopener noreferrer">'+esc(t('open_bot'))+' ↗</a></div></section>';
 }
+function profUsername(){
+ if(!FB_ON||!S.session)return '';
+ return '<section class="card pad stack"><div><span class="eyebrow">'+esc(L('KIRISH','ВХОД','LOGIN'))+'</span><h2>'+esc(L('Login (nom) va email','Логин и email','Login name and email'))+'</h2></div>'+
+  '<form class="form" data-form="uname"><label>'+esc(L('Email (o‘zgarmaydi)','Email (не меняется)','Email (cannot be changed here)'))+'<input type="email" value="'+esc(S.session.email||'')+'" disabled></label>'+
+  '<label>'+esc(L('Login (nom)','Логин (имя)','Login name'))+'<input type="text" name="username" value="'+esc(S.session.name||'')+'" maxlength="24" minlength="3" pattern="[A-Za-z0-9._\\-]{3,24}" autocomplete="username" required></label>'+
+  '<p class="media-help">'+esc(L('3–24 belgi: lotin harflari, raqamlar, . _ -  Kirishda login yoki email ishlaydi.','3–24 символа: латиница, цифры, . _ -  Для входа подойдёт логин или email.','3–24 characters: letters, numbers, . _ -  You can sign in with the login name or the email.'))+'</p><p class="err" id="unerr"></p><div><button class="btn" type="submit">'+esc(L('Loginni saqlash','Сохранить логин','Save login name'))+'</button></div></form></section>';
+}
 function profPassword(){
  if(!FB_ON&&isAdmin())return '';
  return '<section class="card pad stack"><div><span class="eyebrow">'+esc(L('XAVFSIZLIK','БЕЗОПАСНОСТЬ','SECURITY'))+'</span><h2>'+esc(L('Parolni almashtirish','Смена пароля','Change password'))+'</h2></div>'+
@@ -1328,7 +1359,7 @@ function profileView(){
  if(!S.session){
   return '<div class="stack prof-page"><div class="head"><span class="eyebrow">KINOQUIZ</span><h1>'+esc(t('nav_profile'))+'</h1></div><div class="prof-grid"><section class="card pad stack prof-guest"><div class="prof-guest-orb">'+avatarHtml(84)+'</div><h2>'+esc(L('Profilingizni yarating','Создайте свой профиль','Create your profile'))+'</h2><p class="muted">'+esc(L('Rasm, ism, sevimli janrlar, Telegram va Instagram — hammasi bir joyda. Natijalaringiz saqlanadi, parolni bot orqali tiklash mumkin.','Фото, имя, любимые жанры, Telegram и Instagram — всё в одном месте. Результаты сохраняются, а пароль можно восстановить через бота.','Photo, name, favourite genres, Telegram and Instagram — all in one place. Your results are saved and you can recover your password with our bot.'))+'</p><div class="row"><button class="btn primary" data-a="openlogin">'+esc(t('login'))+'</button></div></section><div class="stack">'+profAppearance()+'</div></div></div>';
  }
- return '<div class="stack prof-page"><div class="prof-grid"><div class="stack prof-left">'+profHero()+'</div><div class="stack prof-right">'+profForm()+profTelegram()+profPassword()+profAppearance()+profOrders()+'</div></div></div>';
+ return '<div class="stack prof-page"><div class="prof-grid"><div class="stack prof-left">'+profHero()+'</div><div class="stack prof-right">'+profForm()+profUsername()+profTelegram()+profPassword()+profAppearance()+profOrders()+'</div></div></div>';
 }
 
 /* ----- password-recovery dialogs ----- */
@@ -1434,6 +1465,12 @@ document.addEventListener('input',function(e){
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();
  if(e.key==='Tab'){var md=$('#modal');if(md&&!md.hidden){var fo=md.querySelectorAll('button,input,a[href]');if(fo.length){var first=fo[0],last=fo[fo.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}}}
  if(e.key==='Enter'&&S.play&&!S.play.done&&S.play.picked!==null&&e.target&&e.target.tagName!=='BUTTON'&&$('#modal').hidden){var nb=document.querySelector('[data-a=nextq]');if(nb){e.preventDefault();nb.click()}}if(e.key==='Enter'&&e.target&&e.target.id==='answerinput'){e.preventDefault();var b=document.querySelector('[data-a=submitanswer]');if(b)b.click()}});
+document.addEventListener('error',function(e){var im=e.target;if(!im||im.tagName!=='IMG')return;
+ var sp=im.closest&&im.closest('.store-product-image');
+ if(sp){sp.classList.add('broken');if(!sp.querySelector('span'))sp.insertAdjacentHTML('beforeend','<span>✦</span>');return}
+ var qm=im.closest&&im.closest('.quiz-media-item');
+ if(qm){var d=document.createElement('div');d.className='img-fail';d.textContent=L('Rasm yuklanmadi','Изображение не загрузилось','This image could not be loaded');im.replaceWith(d)}
+},true);
 document.addEventListener('submit',async function(e){
  var f=e.target;var k=f.dataset.form;if(!k)return;e.preventDefault();
  var fd=new FormData(f);var g=function(n){return String(fd.get(n)||'').trim()};
@@ -1484,7 +1521,13 @@ document.addEventListener('submit',async function(e){
   renderMain();toast(S.lang==='uz'?'Do‘st qo‘shildi':S.lang==='ru'?'Друг добавлен':'Friend added');
  }else if(k==='product'){
   var name=g('name'),price=Math.max(0,Number(g('price'))||0),stock=Math.max(0,parseInt(g('stock'),10)||0),imageUrl=g('image');
-  if(imageUrl&&!/^https?:\/\//i.test(imageUrl)){toast('Please enter a valid image URL.');return}
+  var pfIn=f.querySelector('[name="imagefile"]'),pFile=pfIn&&pfIn.files&&pfIn.files[0];
+  if(imageUrl&&!/^https?:\/\//i.test(imageUrl)){toast(L('To‘g‘ri havola kiriting (http:// yoki https://).','Введите корректную ссылку (http:// или https://).','Please enter a valid link (http:// or https://).'));return}
+  if(imageUrl&&pFile){toast(L('Havola yoki fayldan birini tanlang.','Выберите что-то одно: ссылку или файл.','Choose either a link or a file, not both.'));return}
+  try{
+   if(pFile){if(!kq())throw new Error(L('Fayl yuklash uchun hisobga kiring.','Для загрузки файла войдите в аккаунт.','Sign in to upload a file.'));var up=await uploadMediaFile(pFile);imageUrl=typeof up==='string'?up:up.ref}
+   else if(imageUrl){imageUrl=(await smartMedia(imageUrl,true)).ref}
+  }catch(err){toast(err.message||'Could not read this image.');return}
   S.products.push({id:'p'+Date.now(),name:name,description:g('description'),price:price,stock:stock,image:imageUrl,createdAt:Date.now()});sv('products',S.products);toast(S.lang==='uz'?'Mahsulot saqlandi':S.lang==='ru'?'Товар сохранён':'Product saved');renderMain();
  }else if(k==='checkout'){
   var buyer=g('buyer'),contact=g('contact');if(!S.cart.length){toast('Your cart is empty.');return}
@@ -1513,8 +1556,8 @@ document.addEventListener('submit',async function(e){
   async function collectAsset(card,ri,qi,slot){
    var url=fieldUrl('media'+ri+'_'+qi+'_'+slot),inp=card.querySelector('[name="upload'+ri+'_'+qi+'_'+slot+'"]'),file=inp&&inp.files&&inp.files[0];
    if(url&&file)throw new Error('For each media slot, choose either a URL or an uploaded file, not both.');
-   if(file){if(file.size>40*1024*1024)throw new Error('Each uploaded media file must be 40 MB or smaller.');return kq()?await kq().upload(file):await saveMediaFile(file)}
-   if(url)return {ref:url,type:mediaTypeFromUrl(url),name:''};
+   if(file)return await uploadMediaFile(file);
+   if(url)return await smartMedia(url);
    return null;
   }
   try{
@@ -1531,8 +1574,11 @@ document.addEventListener('submit',async function(e){
       if(mediaItems.length<3)throw new Error('Round 4 requires at least 3 media items for every question. Add three URLs or uploads in question '+(j+1)+'.');
      }else if(i===4){var charAsset=await collectAsset(card,i,j,0);if(charAsset)mediaItems.push(charAsset)}
      else{
-      media=fieldUrl('media'+i+'_'+j);
-      if((i===1||i===2||i===6)&&!media)throw new Error('Please add the required image, audio or one-second video URL in round '+(i+1)+', question '+(j+1)+'.');
+      var rawUrl=fieldUrl('media'+i+'_'+j),upIn=card.querySelector('[name="upload'+i+'_'+j+'"]'),upFile=upIn&&upIn.files&&upIn.files[0];
+      if(rawUrl&&upFile)throw new Error('Round '+(i+1)+', question '+(j+1)+': choose either a link or an uploaded file, not both.');
+      if(upFile){var ua=await uploadMediaFile(upFile);media=typeof ua==='string'?ua:ua.ref}
+      else if(rawUrl){media=i===1?(await smartMedia(rawUrl,true)).ref:normalizeMediaUrl(rawUrl)}
+      if((i===1||i===2||i===6)&&!media)throw new Error('Please add the required image, audio or one-second video (a link or a file) in round '+(i+1)+', question '+(j+1)+'.');
      }
      items.push({cat:i,q:q,answer:answer,media:media,mediaItems:mediaItems});sectionCount++;
     }
@@ -1554,6 +1600,12 @@ document.addEventListener('submit',async function(e){
   if(web&&!/^https?:\/\/[^\s]+$/i.test(web)){if(pe)pe.textContent=L('Sayt manzili http:// yoki https:// bilan boshlansin.','Адрес сайта должен начинаться с http:// или https://.','Website must start with http:// or https://');return}
   saveProfile({displayName:g('displayName').slice(0,40),city:g('city').slice(0,40),bio:g('bio').slice(0,160),movie:g('movie').slice(0,60),genres:fd.getAll('genre').filter(function(x){return GENRES.indexOf(x)>-1}),telegram:tgH,instagram:igH,website:web});
   render();toast(L('Profil saqlandi ✓','Профиль сохранён ✓','Profile saved ✓'));
+ }else if(k==='uname'){
+  var une=$('#unerr'),nu=g('username');if(une)une.textContent='';
+  if(!/^[A-Za-z0-9._-]{3,24}$/.test(nu)){if(une)une.textContent=L('Login 3–24 belgi: lotin harflari, raqamlar, . _ -','Логин 3–24 символа: латиница, цифры, . _ -','Login name: 3–24 characters, letters, numbers, . _ -');return}
+  if(nu===S.session.name){toast(L('Login o‘zgarmadi.','Логин не изменился.','That is already your login name.'));return}
+  try{await kq().changeUsername(nu);toast(L('Login yangilandi ✓','Логин обновлён ✓','Login name updated ✓'))}
+  catch(err){var tk=err&&(err.code==='auth/username-taken'||err.code==='username-taken');if(une)une.textContent=tk?L('Bu login band.','Этот логин уже занят.','This login name is already taken.'):(err.code==='auth/too-many-requests'?L('Juda ko‘p urinish. Keyinroq urinib ko‘ring.','Слишком много попыток. Попробуйте позже.','Too many attempts. Try again later.'):L('Saqlab bo‘lmadi.','Не удалось сохранить.','Could not save. Please try again.'))}
  }else if(k==='chpw'){
   var pw0=g('cur'),n1=g('n1'),n2=g('n2'),perr=$('#pwerr'),minL=FB_ON?6:4;
   if(n1!==n2){if(perr)perr.textContent=L('Yangi parollar mos emas.','Новые пароли не совпадают.','The new passwords do not match.');return}
