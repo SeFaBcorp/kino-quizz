@@ -20,7 +20,9 @@ and on every start it automatically
 - The bot also understands `/unlink`, `/help`, `/cancel` and answers in Uzbek, Russian or English.
 
 ## E-mail setup (needed for e-mail recovery and for the bot's verification code)
-**Render's FREE plan blocks SMTP (Gmail SMTP will not work there), so use an HTTPS e-mail API. Brevo is free (300 e-mails/day):**
+**Option A (no Brevo, no domain): send through your own Gmail with Google Apps Script.** Steps are at the top of `gmail-relay.gs`. Render env: `MAIL_WEBHOOK_URL` + `MAIL_WEBHOOK_SECRET`. Logs should show `e-mail: gmail-relay`. (Gmail limit ~100 mails/day.)
+
+**Option B: Render's FREE plan blocks SMTP (Gmail SMTP will not work there), so use an HTTPS e-mail API. Brevo is free (300 e-mails/day):**
 1. Create an account at https://www.brevo.com
 2. *Senders, Domains & Dedicated IPs → Senders → Add a sender*: add the Gmail you want mail to come from and confirm the e-mail Brevo sends you.
 3. *SMTP & API → API keys → Generate a new API key*.

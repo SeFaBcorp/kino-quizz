@@ -31,6 +31,7 @@ if (!WEB_KEY) { try { WEB_KEY = (fs.readFileSync(path.join(__dir, 'public', 'fir
    Render's FREE plan blocks SMTP ports (25/465/587), so the default is an HTTPS e-mail API (Brevo or Resend, port 443).
    Plain SMTP still works on a paid Render plan or any other host. */
 const BREVO = E.BREVO_API_KEY || '', RESEND = E.RESEND_API_KEY || '';
+const GAS_URL = E.MAIL_WEBHOOK_URL || '', GAS_SECRET = E.MAIL_WEBHOOK_SECRET || '';   // Google Apps Script relay: sends from your own Gmail, no domain needed
 const SMTP_PORT = Number(E.SMTP_PORT || 465);
 const mailer = E.SMTP_HOST ? nodemailer.createTransport({
   host: E.SMTP_HOST, port: SMTP_PORT, secure: SMTP_PORT === 465,
@@ -38,12 +39,17 @@ const mailer = E.SMTP_HOST ? nodemailer.createTransport({
 }) : null;
 const FROM_EMAIL = E.MAIL_FROM || E.SMTP_USER || '';
 const FROM_NAME = E.MAIL_FROM_NAME || 'KinoQuiz';
-const mailOn = !!((BREVO || RESEND) && FROM_EMAIL || mailer);
-const mailKind = BREVO && FROM_EMAIL ? 'brevo' : RESEND && FROM_EMAIL ? 'resend' : mailer ? 'smtp' : 'OFF';
+const mailOn = !!(GAS_URL && GAS_SECRET || (BREVO || RESEND) && FROM_EMAIL || mailer);
+const mailKind = GAS_URL && GAS_SECRET ? 'gmail-relay' : BREVO && FROM_EMAIL ? 'brevo' : RESEND && FROM_EMAIL ? 'resend' : mailer ? 'smtp' : 'OFF';
 async function mail(to, subject, text) {
   if (!mailOn) return false;
   try {
-    if (mailKind === 'brevo') {
+    if (mailKind === 'gmail-relay') {
+      const r = await fetch(GAS_URL, { method: 'POST', redirect: 'follow', headers: { 'content-type': 'text/plain' },   // Apps Script answers with a 302; fetch follows it
+        body: JSON.stringify({ secret: GAS_SECRET, name: FROM_NAME, to, subject, text }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error('gmail-relay ' + r.status + ' ' + (j.error || ''));
+    } else if (mailKind === 'brevo') {
       const r = await fetch('https://api.brevo.com/v3/smtp/email', { method: 'POST', headers: { 'api-key': BREVO, 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify({ sender: { name: FROM_NAME, email: FROM_EMAIL }, to: [{ email: to }], subject, textContent: text }) });
       if (!r.ok) throw new Error('brevo ' + r.status + ' ' + (await r.text()).slice(0, 300));
@@ -445,8 +451,8 @@ async function publishRules() {
 }
 
 app.listen(E.PORT || 3000, async () => {
-  console.log('server up', '| e-mail:', mailKind === 'OFF' ? 'OFF (set BREVO_API_KEY + MAIL_FROM)' : mailKind, '| AI:', AI_KEY ? 'on' : 'off');
-  if ((BREVO || RESEND) && !FROM_EMAIL) console.error('MAIL_FROM is missing: set it to the sender address you verified at your e-mail provider.');
+  console.log('server up', '| e-mail:', mailKind === 'OFF' ? 'OFF (set MAIL_WEBHOOK_URL + MAIL_WEBHOOK_SECRET)' : mailKind, '| AI:', AI_KEY ? 'on' : 'off');
+  if (!(GAS_URL && GAS_SECRET) && (BREVO || RESEND) && !FROM_EMAIL) console.error('MAIL_FROM is missing: set it to the sender address you verified at your e-mail provider.');
   if (mailKind === 'smtp') mailer.verify().then(() => console.log('smtp ok')).catch(e => console.error('smtp NOT working (Render free plan blocks SMTP ports):', e.message));
   if (PUBLIC) {
     console.log('webhook:', (await tg('setWebhook', { url: `${PUBLIC}/telegram/${E.WEBHOOK_SECRET}`, allowed_updates: ['message'] }).catch(e => ({ description: String(e) }))).description);
