@@ -1,4 +1,4 @@
-<!doctype html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#171326"><title>KinoQuiz — Cinema Studio v10</title><meta name="description" content="Seven-round quiz collections with three private answer attempts, actor media galleries and interactive embedded media, friend lobby and store."><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+<!doctype html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#171326"><title>KinoQuiz</title><meta name="description" content="Seven-round quiz collections with three private answer attempts, actor media galleries and interactive embedded media, friend lobby and store."><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 
 /* v7 media embeds: YouTube and Spotify stay inside the question card */
 .quiz-media-item.media-embed iframe{display:block;width:100%;min-height:280px;border:0;border-radius:14px;background:#100d19}
@@ -721,9 +721,35 @@ async function smartMedia(url,forceImage){
  try{var r=await kq().mediaInfo(url);if(r&&r.image)return{ref:r.image,type:'image/*',name:''};if(r&&r.media)return{ref:r.media,type:r.type||'',name:''}}catch(e){}
  return ref;
 }
-async function uploadMediaFile(file){
+var storageBad=false;
+function withTimeout(p,ms){return new Promise(function(res,rej){var t=setTimeout(function(){rej(new Error('timeout'))},ms);p.then(function(v){clearTimeout(t);res(v)},function(e){clearTimeout(t);rej(e)})})}
+/* Pictures can be stored inside the database itself (shrunk to a small JPEG), so they work even when Firebase Storage is off. */
+function fileToInlineImage(file,maxDim,maxLen){
+ return new Promise(function(res,rej){
+  var url=URL.createObjectURL(file),im=new Image();
+  im.onload=function(){
+   var k=Math.min(1,maxDim/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');
+   c.width=Math.max(1,Math.round(im.naturalWidth*k));c.height=Math.max(1,Math.round(im.naturalHeight*k));
+   var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+   var q=.85,d=c.toDataURL('image/jpeg',q);while(d.length>maxLen&&q>.35){q-=.1;d=c.toDataURL('image/jpeg',q)}
+   URL.revokeObjectURL(url);d.length>maxLen*1.6?rej(new Error('too big')):res(d)
+  };
+  im.onerror=function(){URL.revokeObjectURL(url);rej(new Error(L('Bu rasm faylini o‘qib bo‘lmadi.','Не удалось прочитать это изображение.','Could not read this picture file.')))};
+  im.src=url;
+ });
+}
+async function uploadMediaFile(file,opts){
  if(file.size>25*1024*1024)throw new Error(L('Fayl 25 MB dan kichik bo‘lsin.','Файл должен быть не больше 25 МБ.','Each uploaded file must be 25 MB or smaller.'));
- return kq()?await kq().upload(file):await saveMediaFile(file);
+ var isImg=/^image\//.test(file.type||''),quiz=!!(opts&&opts.quiz);
+ if(kq()){
+  if(!(storageBad&&isImg)){
+   try{return await withTimeout(kq().upload(file),isImg?12000:90000)}
+   catch(e){console.warn('Storage upload failed:',e);if(isImg)storageBad=true}
+  }
+  if(!isImg)throw new Error(L('Audio/videoni yuklab bo‘lmadi (Firebase Storage ishlamayapti). Havoladan foydalaning.','Не удалось загрузить аудио/видео (Firebase Storage недоступен). Используйте ссылку.','Could not upload this audio/video file (Firebase Storage is not available). Please use a link instead.'));
+  return await fileToInlineImage(file,quiz?640:900,quiz?60000:150000);
+ }
+ return await saveMediaFile(file);
 }
 function youtubeId(url){
  try{var u=new URL(url);var h=u.hostname.replace(/^www\./,'').toLowerCase(),id='';
@@ -991,7 +1017,7 @@ function renderMain(){
  catch(err){console.error('KinoQuiz render error:',err);$('#main').innerHTML='<div class="wrap"><section class="card pad stack"><h1>KinoQuiz had a hiccup</h1><p class="muted">The page could not be displayed. Your saved quizzes have not been deleted.</p><button class="btn primary" data-a="go" data-v="dashboard">Reload dashboard</button></section></div>'}
  fxTilt=null;
 }
-function toast(m){var el=$('#toast');el.textContent=m;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){el.classList.remove('show')},2200)}
+function toast(m,ms){var el=$('#toast');el.textContent=m;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){el.classList.remove('show')},ms||2200)}
 function go(v){S.view=v;S.q='';S.play=null;var sb=$('#searchbox');if(sb)sb.value='';if(location.hash.slice(1)!==v)location.hash=v;render();window.scrollTo(0,0)}
 
 /* ---------- view pieces ---------- */
@@ -1525,9 +1551,9 @@ document.addEventListener('submit',async function(e){
   if(imageUrl&&!/^https?:\/\//i.test(imageUrl)){toast(L('To‘g‘ri havola kiriting (http:// yoki https://).','Введите корректную ссылку (http:// или https://).','Please enter a valid link (http:// or https://).'));return}
   if(imageUrl&&pFile){toast(L('Havola yoki fayldan birini tanlang.','Выберите что-то одно: ссылку или файл.','Choose either a link or a file, not both.'));return}
   try{
-   if(pFile){if(!kq())throw new Error(L('Fayl yuklash uchun hisobga kiring.','Для загрузки файла войдите в аккаунт.','Sign in to upload a file.'));var up=await uploadMediaFile(pFile);imageUrl=typeof up==='string'?up:up.ref}
+   if(pFile){if(!kq())throw new Error(L('Fayl yuklash uchun hisobga kiring.','Для загрузки файла войдите в аккаунт.','Sign in to upload a file.'));toast(L('Rasm yuklanmoqda…','Загружаем картинку…','Uploading the picture…'),30000);var up=await uploadMediaFile(pFile);imageUrl=typeof up==='string'?up:up.ref}
    else if(imageUrl){imageUrl=(await smartMedia(imageUrl,true)).ref}
-  }catch(err){toast(err.message||'Could not read this image.');return}
+  }catch(err){toast(err.message||'Could not read this image.',7000);return}
   S.products.push({id:'p'+Date.now(),name:name,description:g('description'),price:price,stock:stock,image:imageUrl,createdAt:Date.now()});sv('products',S.products);toast(S.lang==='uz'?'Mahsulot saqlandi':S.lang==='ru'?'Товар сохранён':'Product saved');renderMain();
  }else if(k==='checkout'){
   var buyer=g('buyer'),contact=g('contact');if(!S.cart.length){toast('Your cart is empty.');return}
@@ -1556,7 +1582,7 @@ document.addEventListener('submit',async function(e){
   async function collectAsset(card,ri,qi,slot){
    var url=fieldUrl('media'+ri+'_'+qi+'_'+slot),inp=card.querySelector('[name="upload'+ri+'_'+qi+'_'+slot+'"]'),file=inp&&inp.files&&inp.files[0];
    if(url&&file)throw new Error('For each media slot, choose either a URL or an uploaded file, not both.');
-   if(file)return await uploadMediaFile(file);
+   if(file)return await uploadMediaFile(file,{quiz:true});
    if(url)return await smartMedia(url);
    return null;
   }
@@ -1576,7 +1602,7 @@ document.addEventListener('submit',async function(e){
      else{
       var rawUrl=fieldUrl('media'+i+'_'+j),upIn=card.querySelector('[name="upload'+i+'_'+j+'"]'),upFile=upIn&&upIn.files&&upIn.files[0];
       if(rawUrl&&upFile)throw new Error('Round '+(i+1)+', question '+(j+1)+': choose either a link or an uploaded file, not both.');
-      if(upFile){var ua=await uploadMediaFile(upFile);media=typeof ua==='string'?ua:ua.ref}
+      if(upFile){var ua=await uploadMediaFile(upFile,{quiz:true});media=typeof ua==='string'?ua:ua.ref}
       else if(rawUrl){media=i===1?(await smartMedia(rawUrl,true)).ref:normalizeMediaUrl(rawUrl)}
       if((i===1||i===2||i===6)&&!media)throw new Error('Please add the required image, audio or one-second video (a link or a file) in round '+(i+1)+', question '+(j+1)+'.');
      }
@@ -1584,6 +1610,7 @@ document.addEventListener('submit',async function(e){
     }
     if(!sectionCount)throw new Error('Please add at least one question to each of the seven rounds. Round '+(i+1)+' is empty.');
    }
+   if(JSON.stringify(items).length>900000)throw new Error('This collection is too large to save (pictures are stored inside it). Use links for some pictures or remove a few.');
    var title=g('title');if(!title)throw new Error('Please enter a collection title.');
    var price=Math.max(0,parseFloat(g('price'))||0);
    S.cols.push({id:'c'+Date.now(),title:title,paid:price>0,price:price,items:items});sv('cols',S.cols);S.view='quiz';S.q='';if(location.hash.slice(1)!=='quiz')location.hash='quiz';render();toast(t('added'));
