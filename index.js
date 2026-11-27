@@ -7,6 +7,7 @@ import fs from 'fs';
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import { fileURLToPath } from 'url';
+import { setupNews } from './news.js';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -357,6 +358,113 @@ app.post('/api/order-created', needUser, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+/* ---------- orders + payment (card transfer, confirmed inside the Telegram bot) ---------- */
+const PAY_CARD = E.PAY_CARD || '', PAY_HOLDER = E.PAY_CARD_HOLDER || '', PAY_NOTE = E.PAY_NOTE || '', USD_UZS = Number(E.USD_TO_UZS || 0);
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const orderCode = () => Array.from({ length: 6 }, () => CODE_CHARS[crypto.randomInt(CODE_CHARS.length)]).join('');
+let botUser = E.BOT_USERNAME || '';
+async function botName() { if (!botUser) { try { botUser = (await tg('getMe', {})).result?.username || ''; } catch {} } return botUser; }
+const money = o => `$${Number(o.total).toFixed(2)}` + (USD_UZS > 0 ? ` ≈ ${Math.round(o.total * USD_UZS).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} UZS` : '');
+const PAYT = {
+  en: { order: 'Order', total: 'Total', how: '💳 <b>How to pay</b>\nTransfer the total to this card:', after: 'Then send a screenshot of the receipt (as a photo) right here. Our team will confirm it and reply.', wait: 'Our team will send the payment details here shortly.' },
+  ru: { order: 'Заказ', total: 'Итого', how: '💳 <b>Как оплатить</b>\nПереведите сумму на эту карту:', after: 'Затем отправьте сюда скриншот чека (фото). Команда проверит и ответит.', wait: 'Команда скоро пришлёт реквизиты для оплаты.' },
+  uz: { order: 'Buyurtma', total: 'Jami', how: '💳 <b>To‘lov qilish</b>\nJami summani shu kartaga o‘tkazing:', after: 'So‘ng to‘lov chekining skrinshotini (rasm sifatida) shu yerga yuboring. Jamoamiz tekshirib, javob beradi.', wait: 'Jamoamiz tez orada to‘lov rekvizitlarini shu yerga yuboradi.' }
+};
+function payInstructions(lang, o) {
+  const T = PAYT[lang] || PAYT.en;
+  const head = `🛍 <b>${T.order} ${esc(o.code)}</b>\n${esc(o.lines)}\n${T.total}: <b>${esc(money(o))}</b>\n\n`;
+  if (!PAY_CARD) return head + T.wait;
+  return head + `${T.how}\n<code>${esc(PAY_CARD)}</code>${PAY_HOLDER ? '\n' + esc(PAY_HOLDER) : ''}${PAY_NOTE ? '\n' + esc(PAY_NOTE) : ''}\n\n${T.after}`;
+}
+
+// The site sends the cart; the SERVER checks stock, takes the prices from the database, saves the order and notifies everyone.
+app.post('/api/place-order', needUser, wrap(async (req, res) => {
+  const uid = req.user.uid;
+  if (!allow('po:' + uid, 10, 3600e3)) return res.status(429).json({ code: 'rate', error: 'Too many orders, try later.' });
+  const name = String(req.body.name || '').trim().slice(0, 60), contact = String(req.body.contact || '').trim().slice(0, 80);
+  const lang = ['uz', 'ru'].includes(req.body.lang) ? req.body.lang : 'en';
+  const want = new Map();
+  for (const it of (Array.isArray(req.body.items) ? req.body.items.slice(0, 30) : [])) {
+    const id = String(it?.id || ''), q = Math.floor(Number(it?.qty));
+    if (id && !id.includes('/') && q >= 1 && q <= 99) want.set(id, (want.get(id) || 0) + q);
+  }
+  if (!name || !contact || !want.size) return res.status(400).json({ code: 'bad-request', error: 'Missing fields' });
+  const id = 'o' + Date.now(), code = orderCode();
+  let order;
+  try {
+    order = await db.runTransaction(async t => {
+      const refs = [...want.keys()].map(k => db.doc('products/' + k)), snaps = await t.getAll(...refs), items = [];
+      let total = 0;
+      snaps.forEach((snap, i) => {
+        const q = want.get(refs[i].id);
+        if (!snap.exists) throw Object.assign(new Error('not found'), { biz: 'not_found' });
+        const p = snap.data(), price = Number(p.price) || 0, stock = Number(p.stock) || 0;
+        if (stock < q) throw Object.assign(new Error('stock'), { biz: 'stock', product: p.name });
+        items.push({ id: snap.id, name: String(p.name || ''), qty: q, price, left: stock - q }); total += price * q;
+      });
+      items.forEach(it => t.update(db.doc('products/' + it.id), { stock: it.left }));
+      const o = { uid, name, contact, lang, code, status: 'New', pay: 'unpaid', notified: true, createdAt: Date.now(), total: Math.round(total * 100) / 100,
+        items: items.map(({ left, ...r }) => r), lines: items.map(i => `${i.name} × ${i.qty}`).join(', ') };
+      t.set(db.doc('orders/' + id), o);
+      return o;
+    });
+  } catch (e) {
+    if (e.biz === 'stock') return res.status(409).json({ code: 'stock', error: 'Not enough stock', product: e.product });
+    if (e.biz === 'not_found') return res.status(404).json({ code: 'not_found', error: 'Product not found' });
+    throw e;
+  }
+  const bn = await botName(), payUrl = bn ? `https://t.me/${bn}?start=pay_${code}` : '';
+  res.json({ ok: true, id, code, total: order.total, payUrl, card: !!PAY_CARD });
+  // Notifications are best-effort and never block the order.
+  try {
+    const buyer = await auth.getUser(uid).catch(() => null), buyerChat = await chatOf(uid);
+    if (buyerChat) { await db.doc('orders/' + id).update({ chatId: buyerChat }); await say(buyerChat, payInstructions(lang, order)); }
+    const note = `🛍 <b>New order ${code}</b>\n${esc(name)} · ${esc(contact)}${buyer?.email ? '\n' + esc(buyer.email) : ''}\n${esc(order.lines)}\nTotal: <b>${esc(money(order))}</b>\n⏳ Waiting for payment` + (buyerChat ? '' : '\n(the customer has not connected Telegram yet, they will pay via the link on the site)');
+    for (const c of await adminChats()) await say(c, note);
+    if (buyer?.email) await mail(buyer.email, `Your KinoQuiz order ${code}`, `Thank you! We received your order ${code}:\n${order.lines}\nTotal: ${money(order)}\n\n` + (payUrl ? `Pay and send the receipt in Telegram: ${payUrl}\n` : '') + `\n— KinoQuiz`);
+  } catch (e) { console.error('order notify failed:', e.message); }
+}));
+
+// The customer sends a receipt photo to the bot: forward it to the owners with Confirm / Reject buttons.
+async function openOrderFor(chat) {
+  const found = new Map();
+  for (const d of (await db.collection('orders').where('chatId', '==', chat).get()).docs) found.set(d.id, d);
+  for (const l of (await db.collection('tgLinks').where('chatId', '==', chat).get()).docs)
+    for (const d of (await db.collection('orders').where('uid', '==', l.id).get()).docs) found.set(d.id, d);
+  return [...found.values()].filter(d => ['unpaid', 'rejected'].includes(d.data().pay)).sort((a, b) => b.data().createdAt - a.data().createdAt)[0] || null;
+}
+async function handleReceipt(m) {
+  const chat = m.chat.id, lang = langOf(m);
+  if (limited(chat)) return;
+  if (!(m.photo || (m.document && /^image\/|pdf/.test(m.document.mime_type || '')))) return;
+  const od = await openOrderFor(chat);
+  if (!od) return say(chat, tx(lang, 'noOpenOrder'));
+  const o = od.data(), ol = o.lang || lang;
+  await od.ref.update({ pay: 'review', receiptAt: Date.now(), chatId: chat });
+  const cap = `🧾 <b>Payment receipt</b>\nOrder <b>${esc(o.code)}</b> · ${esc(o.name)} · ${esc(o.contact)}\n${esc(o.lines)}\nTotal: <b>${esc(money(o))}</b>`;
+  const kb = { inline_keyboard: [[{ text: '✅ Confirm paid', callback_data: 'pay:ok:' + od.id }, { text: '❌ Reject', callback_data: 'pay:no:' + od.id }]] };
+  let delivered = 0;
+  for (const c of await adminChats()) { const r = await tg('copyMessage', { chat_id: c, from_chat_id: chat, message_id: m.message_id, caption: cap, parse_mode: 'HTML', reply_markup: kb }).catch(() => null); if (r?.ok) delivered++; }
+  if (!delivered) console.error('receipt for order', o.code, 'reached NO owner: connect Telegram in Profile on an owner/admin account');
+  return say(chat, tx(ol, 'receiptGot'));
+}
+async function handleCallback(cb) {
+  const chat = cb.message?.chat?.id, [ns, act, oid] = String(cb.data || '').split(':');
+  const reply = (text, alert) => tg('answerCallbackQuery', { callback_query_id: cb.id, text, show_alert: !!alert }).catch(() => {});
+  if (ns !== 'pay' || !oid || !['ok', 'no'].includes(act)) return reply('?');
+  if (!(await adminChats()).includes(chat)) return reply('Not allowed', true);
+  const ref = db.doc('orders/' + oid), s = await ref.get();
+  if (!s.exists) return reply('Order not found', true);
+  const o = s.data();
+  if (o.pay !== 'review') return reply('Already handled: ' + o.pay, true);
+  const buyerChat = o.chatId || await chatOf(o.uid), ol = o.lang || 'en';
+  if (act === 'ok') { await ref.update({ pay: 'paid', status: 'Confirmed', paidAt: Date.now() }); if (buyerChat) await say(buyerChat, esc(tx(ol, 'payOk').replace('{code}', o.code))); }
+  else { await ref.update({ pay: 'rejected' }); if (buyerChat) await say(buyerChat, esc(tx(ol, 'payNo').replace('{code}', o.code))); }
+  await reply(act === 'ok' ? 'Marked as paid ✅' : 'Rejected ❌');
+  await tg('editMessageReplyMarkup', { chat_id: chat, message_id: cb.message.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {});
+  await say(chat, `${act === 'ok' ? '✅ Paid' : '❌ Rejected'}: order <b>${esc(o.code)}</b> · ${esc(o.name)}`);
+}
+
 /* ---------- Telegram bot (webhook) ---------- */
 const hits = new Map();   // chatId -> recent message times (anti-spam, protects your API bill)
 const limited = id => { const now = Date.now(), a = (hits.get(id) || []).filter(t => now - t < 60000); a.push(now); hits.set(id, a); if (hits.size > 5000) hits.clear(); return a.length > 8; };
@@ -367,7 +475,7 @@ async function ai(chatId, text) {
   if (!AI_KEY) return null;
   const prods = (await db.collection('products').get()).docs.map(d => d.data()).map(p => `${p.name} - $${p.price} - stock ${p.stock}`).join('\n') || 'no products yet';
   const h = history.get(chatId) || []; h.push({ role: 'user', content: text });
-  const system = `You are the support assistant of KinoQuiz (movie quizzes + a small store). Reply in the user's language (Uzbek, Russian or English), briefly and politely. Store products:\n${prods}\nPassword help: tell people to send /forgot to this bot (it asks for their e-mail, sends a code to that e-mail, then gives a temporary password). Never ask for or reveal passwords. Do not invent prices, policies or order status. If you cannot help, or the user wants a human, or it is about payment/orders/complaints, answer with exactly [[HANDOFF]] and nothing else.`;
+  const system = `You are the support assistant of KinoQuiz (movie quizzes + a small store). Reply in the user's language (Uzbek, Russian or English), briefly and politely. Store products:\n${prods}\nPassword help: tell people to send /forgot to this bot (it asks for their e-mail, sends a code to that e-mail, then gives a temporary password). Payment: customers order on the site, then open the \"Pay in Telegram\" link (it opens this bot), transfer the total by bank card${PAY_CARD ? ' to the card ' + PAY_CARD + (PAY_HOLDER ? ' (' + PAY_HOLDER + ')' : '') : ''} and send a screenshot of the receipt here as a photo; the team confirms it and the bot replies. Never ask for or reveal passwords. Do not invent prices, policies or order status. If you cannot help, or the user wants a human, or it is about payment/orders/complaints, answer with exactly [[HANDOFF]] and nothing else.`;
   let out;
   if (PROVIDER === 'openai') {
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -388,6 +496,9 @@ async function ai(chatId, text) {
   h.push({ role: 'assistant', content: out }); history.set(chatId, h.slice(-10)); if (history.size > 2000) history.clear(); return out;
 }
 
+// Automatic, translated movie news (Variety, Deadline, THR, IMDb News, Screen Daily) - see news.js
+const news = setupNews({ app, db, needUser, wrap, allow, provider: PROVIDER, key: AI_KEY, model: E.NEWS_AI_MODEL || E.AI_MODEL, openaiModel: E.NEWS_AI_MODEL || E.OPENAI_MODEL, env: E });
+
 // Bot texts (uz / ru / en, picked from the person's Telegram language).
 const TX = {
   welcome: { en: '🎬 Welcome to KinoQuiz support! Ask me anything about quizzes or the store.\n\n/forgot — recover your password\n/unlink — disconnect this chat from your account\n/help — this message', ru: '🎬 Добро пожаловать в поддержку KinoQuiz! Спрашивайте о викторинах и магазине.\n\n/forgot — восстановить пароль\n/unlink — отключить этот чат от аккаунта\n/help — эта справка', uz: '🎬 KinoQuiz yordam botiga xush kelibsiz! Viktorinalar va do‘kon haqida so‘rang.\n\n/forgot — parolni tiklash\n/unlink — bu chatni hisobdan uzish\n/help — shu yordam' },
@@ -406,6 +517,14 @@ const TX = {
   notLinked: { en: 'This chat is not connected to any account.', ru: 'Этот чат не подключён ни к какому аккаунту.', uz: 'Bu chat hech qanday hisobga ulanmagan.' },
   handoff: { en: 'I passed this to our team, they will reply soon. 🙏', ru: 'Я передал это команде, скоро ответят. 🙏', uz: 'Buni jamoamizga uzatdim, tez orada javob berishadi. 🙏' }
 };
+Object.assign(TX, {
+  noOrder: { en: 'I could not find that order. Please place it again on the site.', ru: 'Заказ не найден. Оформите его на сайте ещё раз.', uz: 'Buyurtma topilmadi. Saytda qaytadan buyurtma bering.' },
+  alreadyPaid: { en: '✅ This order is already paid. Thank you!', ru: '✅ Этот заказ уже оплачен. Спасибо!', uz: '✅ Bu buyurtma allaqachon to‘langan. Rahmat!' },
+  noOpenOrder: { en: 'I do not see an unpaid order for you. Place an order on the site first, then open the “Pay in Telegram” link.', ru: 'Неоплаченных заказов не вижу. Сначала оформите заказ на сайте и откройте ссылку «Оплатить в Telegram».', uz: 'To‘lanmagan buyurtmangiz ko‘rinmayapti. Avval saytda buyurtma bering, so‘ng “Telegramda to‘lash” havolasini oching.' },
+  receiptGot: { en: '🧾 Receipt received. We are checking it and will reply here soon.', ru: '🧾 Чек получен. Проверяем и скоро ответим здесь.', uz: '🧾 Chek qabul qilindi. Tekshirib, tez orada shu yerda javob beramiz.' },
+  payOk: { en: '✅ Payment for order {code} is confirmed. Thank you! We will prepare your order.', ru: '✅ Оплата заказа {code} подтверждена. Спасибо! Готовим ваш заказ.', uz: '✅ {code} buyurtma to‘lovi tasdiqlandi. Rahmat! Buyurtmangizni tayyorlaymiz.' },
+  payNo: { en: '❌ We could not confirm the payment for order {code}. Please send a clear receipt photo again, or write to us here.', ru: '❌ Не удалось подтвердить оплату заказа {code}. Отправьте чёткое фото чека ещё раз или напишите нам здесь.', uz: '❌ {code} buyurtma to‘lovini tasdiqlab bo‘lmadi. Chek rasmini aniqroq qilib qayta yuboring yoki shu yerga yozing.' }
+});
 const tx = (lang, k) => (TX[k][lang] || TX[k].en);
 const langOf = m => { const c = String(m.from?.language_code || '').slice(0, 2).toLowerCase(); return ['uz', 'ru'].includes(c) ? c : 'en'; };
 
@@ -449,9 +568,19 @@ async function recoveryCode(chat, text, lang) {
 
 app.post('/telegram/' + E.WEBHOOK_SECRET, async (req, res) => {
   res.sendStatus(200);
-  const m = req.body.message; if (!m?.text || m.chat?.type !== 'private') return;
+  if (req.body.callback_query) return handleCallback(req.body.callback_query).catch(e => console.error(e));
+  const m = req.body.message; if (!m || m.chat?.type !== 'private') return;
+  if (!m.text) return (m.photo || m.document) ? handleReceipt(m).catch(e => console.error(e)) : undefined;
   const chat = m.chat.id, text = m.text.trim(), from = m.from?.username || '', lang = langOf(m);
   try {
+    if (/^\/start pay_[A-Za-z0-9]{6}$/.test(text)) {            // "Pay in Telegram" link from the site
+      if (limited(chat)) return;
+      const q = await db.collection('orders').where('code', '==', text.slice(-6).toUpperCase()).limit(1).get();
+      if (q.empty) return say(chat, tx(lang, 'noOrder'));
+      const o = q.docs[0].data();
+      await q.docs[0].ref.update({ chatId: chat, tgUser: from });
+      return say(chat, o.pay === 'paid' ? tx(lang, 'alreadyPaid') : payInstructions(o.lang || lang, o));
+    }
     if (text.startsWith('/start link_')) {                       // account linking
       const code = text.split('link_')[1].trim().toUpperCase(), s = await db.doc('tgCodes/' + code).get();
       if (!s.exists || s.data().exp < Date.now()) return say(chat, tx(lang, 'linkExpired'));
@@ -509,10 +638,11 @@ app.listen(E.PORT || 3000, async () => {
   if (!(GAS_URL && GAS_SECRET) && (BREVO || RESEND) && !FROM_EMAIL) console.error('MAIL_FROM is missing: set it to the sender address you verified at your e-mail provider.');
   if (mailKind === 'smtp') mailer.verify().then(() => console.log('smtp ok')).catch(e => console.error('smtp NOT working (Render free plan blocks SMTP ports):', e.message));
   if (PUBLIC) {
-    console.log('webhook:', (await tg('setWebhook', { url: `${PUBLIC}/telegram/${E.WEBHOOK_SECRET}`, allowed_updates: ['message'] }).catch(e => ({ description: String(e) }))).description);
+    console.log('webhook:', (await tg('setWebhook', { url: `${PUBLIC}/telegram/${E.WEBHOOK_SECRET}`, allowed_updates: ['message', 'callback_query'] }).catch(e => ({ description: String(e) }))).description);
     // Free Render sleeps after 15 min without traffic; pinging ourselves keeps the bot awake.
     setInterval(() => fetch(PUBLIC + '/healthz').catch(() => {}), 10 * 60 * 1000);
   } else console.log('PUBLIC_URL / RENDER_EXTERNAL_URL not set: Telegram webhook not registered');
   await ensureOwners();
   await publishRules();
+  news.start();
 });

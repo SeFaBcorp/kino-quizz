@@ -1,4 +1,4 @@
-# KinoQuiz v10
+# KinoQuiz v15
 
 One Node server (`index.js`) does everything: it serves the website (`public/`), the account API, the Telegram bot,
 and on every start it automatically
@@ -6,6 +6,16 @@ and on every start it automatically
 - creates/claims the owner accounts from `OWNER_EMAILS`,
 - publishes `firestore.rules` and `storage.rules`,
 - pings itself every 10 minutes so the free Render instance stays awake.
+
+## What changed in v15: automatic, translated news
+`news.js` connects **Variety, Deadline, The Hollywood Reporter, IMDb News and Screen Daily**. Every `NEWS_REFRESH_MIN` minutes (default 60) the server
+downloads their RSS feeds, has the AI (the same `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` the bot uses) translate each new headline and short summary
+into **Uzbek, Russian and English**, picks the category, and saves it in Firestore `news`. The site shows the story in the language chosen with UZ / EN / RU.
+- Only the headline and a short summary are stored; every story links to the original article.
+- Admins/owners can press **Refresh now** under *News sources*. The chips there show Connected / Error per source.
+- A story an admin deletes does not come back (ids are remembered in `newsMeta/seen`).
+- IMDb has no public RSS, so IMDb News and Screen Daily are read through Google News' RSS search. Replace any feed with `NEWS_FEEDS` (see `.env.example`).
+- Cost: only NEW stories are translated (about 4 per AI request). Set `NEWS_AI_MODEL` to a cheaper model if you want.
 
 ## What changed in v10
 - **Sign in with e-mail OR username.** Both are unique (checked by the server when someone signs up).
@@ -41,3 +51,11 @@ Tip: mails from a free Gmail sender can land in Spam at first — tell people to
 5. Owners/admins: Profile → Telegram → Connect, to receive new-order alerts in the bot.
 
 `seed.js` is optional (manual owner creation from a PC).
+
+
+## Orders and payment (in the Telegram bot)
+1. The customer places an order on the site. The server checks the stock, takes the prices from the database and saves the order with a 6-letter code.
+2. The site shows a **Pay in Telegram** button. It opens the bot, which sends the order, the total (and UZS if `USD_TO_UZS` is set) and the card from `PAY_CARD`.
+3. The customer pays and sends a photo/screenshot of the receipt to the bot.
+4. Every owner/admin whose Telegram is connected (Profile -> Telegram) gets the receipt with **Confirm paid / Reject** buttons. The customer is told the result in the bot, and the order shows Awaiting payment / Receipt under review / Paid on the site.
+Set `PAY_CARD`, `PAY_CARD_HOLDER` (and optionally `PAY_NOTE`, `USD_TO_UZS`) in Render -> Environment. Without `PAY_CARD` the bot tells the customer that the team will send the details.

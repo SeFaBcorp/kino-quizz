@@ -18,7 +18,7 @@ window.addEventListener('load',function(){
   var h={'Content-Type':'application/json'};if(token)h.Authorization='Bearer '+token;
   return fetch(KQ_SERVER+path,{method:method||'POST',headers:h,body:body?JSON.stringify(body):undefined,signal:ctl?ctl.signal:undefined})
    .then(function(r){clearTimeout(timer);return r.json().catch(function(){return {}}).then(function(j){
-     if(!r.ok){var e=new Error(j.error||'server');e.code=CODE_MAP[j.code]||j.code||'server/error';e.status=r.status;throw e}
+     if(!r.ok){var e=new Error(j.error||'server');e.code=CODE_MAP[j.code]||j.code||'server/error';e.status=r.status;if(j.product)e.product=j.product;throw e}
      return j})},
    function(err){clearTimeout(timer);var e=new Error('network');e.code=(err&&err.name==='AbortError')?'server/timeout':'auth/network-request-failed';throw e});
  }
@@ -62,11 +62,13 @@ window.addEventListener('load',function(){
    var code=Math.random().toString(36).slice(2,8).toUpperCase();
    return db.doc('tgCodes/'+code).set({uid:auth.currentUser.uid,exp:Date.now()+600000}).then(function(){return code})
   },
+  placeOrder:function(o){return call('/api/place-order','POST',o)},
   changeUsername:function(name){return call('/api/username','POST',{username:name})},
   mediaInfo:function(url){return call('/api/media-info?url='+encodeURIComponent(url),'GET')},
   listAdmins:function(){return call('/api/admins','GET')},
   addAdmin:function(email){return call('/api/admins','POST',{email:email})},
-  removeAdmin:function(uid){return call('/api/admins/remove','POST',{uid:uid})}
+  removeAdmin:function(uid){return call('/api/admins/remove','POST',{uid:uid})},
+  refreshNews:function(){return call('/api/news/refresh','POST',{})}
  };
  window.KQ=API;
 
