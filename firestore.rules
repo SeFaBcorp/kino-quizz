@@ -20,18 +20,16 @@ service cloud.firestore {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow update, delete: if isAdmin();
     }
+    // Accounts (role, e-mail, username) are created and changed by the server only.
+    // A person may only edit their own scores/purchases/profile, or clear the "must change password" flag.
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if signedIn() && request.auth.uid == uid
-                    && request.resource.data.role == 'user' && request.resource.data.mustChange == false;
+      allow create: if false;
       allow update: if signedIn() && request.auth.uid == uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scores','purchased','profile','mustChange'])
                     && request.resource.data.mustChange == false;
     }
-    match /usernames/{n} {
-      allow get: if true;
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-    }
+    match /usernames/{n} { allow read, write: if false; }   // checked by the server (keeps login names and e-mails private)
     match /tgCodes/{c} {
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
     }

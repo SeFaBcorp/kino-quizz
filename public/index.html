@@ -1,4 +1,4 @@
-<!doctype html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#171326"><title>KinoQuiz — Cinema Studio v9</title><meta name="description" content="Seven-round quiz collections with three private answer attempts, actor media galleries and interactive embedded media, friend lobby and store."><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+<!doctype html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#171326"><title>KinoQuiz — Cinema Studio v10</title><meta name="description" content="Seven-round quiz collections with three private answer attempts, actor media galleries and interactive embedded media, friend lobby and store."><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 
 /* v7 media embeds: YouTube and Spotify stay inside the question card */
 .quiz-media-item.media-embed iframe{display:block;width:100%;min-height:280px;border:0;border-radius:14px;background:#100d19}
@@ -610,6 +610,42 @@ body{background:radial-gradient(ellipse at 85% -15%,rgba(125,91,255,.14),transpa
   .prof-page .two{grid-template-columns:1fr}
 }
 @media(max-width:380px){.prof-stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ===== v10 sign-in / recovery dialogs ===== */
+.dlg.auth{width:min(100%,430px);padding:0;gap:0;overflow:auto;border-radius:22px}
+.auth-hero{position:relative;text-align:center;padding:28px 26px 18px;background:radial-gradient(circle at 50% -10%,color-mix(in srgb,var(--accent) 30%,transparent),transparent 70%),linear-gradient(180deg,color-mix(in srgb,var(--accent) 10%,var(--surface)),var(--surface))}
+.auth-x{position:absolute;top:12px;right:12px}
+.auth-logo{width:58px;height:58px;margin:0 auto 12px;border-radius:18px;display:grid;place-items:center;font-size:28px;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 55%,#ff8cae));box-shadow:0 12px 28px color-mix(in srgb,var(--accent) 38%,transparent)}
+.auth-hero h2{margin:0;font-size:22px;letter-spacing:-.01em}
+.auth-hero p{margin:5px 0 0;font-size:13.5px}
+.auth-body{display:grid;gap:15px;padding:16px 26px 26px}
+.auth-body .auth-toggle{margin:0}
+.auth-body .auth-toggle button{flex:1;justify-content:center}
+.fld{display:grid;gap:6px;font-size:13px;font-weight:700;color:var(--ink)}
+.fld .in{position:relative;display:flex;align-items:center}
+.fld .in .ic{position:absolute;left:13px;font-style:normal;font-size:15px;opacity:.6;pointer-events:none}
+.fld .in input{width:100%;height:48px;padding:0 44px 0 40px;border-radius:12px;font-size:15px}
+.fld .eye{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:10px;background:none;cursor:pointer;font-size:16px;opacity:.7}
+.fld .eye:hover{background:var(--tint);opacity:1}
+.fld small{font-weight:500;font-size:12px;color:var(--muted)}
+.auth-row{display:flex;justify-content:flex-end;margin-top:-6px}
+.btn.big{width:100%;height:50px;border-radius:13px;font-size:15.5px;justify-content:center}
+.btn.big[disabled]{opacity:.65;cursor:progress}
+.auth-alert,.auth-info{margin:0;padding:10px 13px;border-radius:11px;font-size:13px;font-weight:600;line-height:1.35}
+.auth-alert{background:color-mix(in srgb,var(--bad) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--bad) 38%,var(--line));color:var(--bad)}
+.auth-info{background:var(--tint);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));color:var(--accent-ink)}
+.auth-alert:empty,.auth-info:empty{display:none}
+.auth-tip{margin:0;font-size:12.5px;color:var(--muted);text-align:center}
+.opt-card{display:grid;gap:11px;padding:15px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.opt-card h3{margin:0;font-size:15px;display:flex;align-items:center;gap:9px}
+.opt-card h3 i{font-style:normal;display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--tint)}
+.opt-card p{margin:0;font-size:13px}
+.opt-card .steps{font-size:13px;gap:6px}
+.or-sep{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.or-sep:before,.or-sep:after{content:"";flex:1;height:1px;background:var(--line)}
+.auth-done{display:grid;gap:12px;justify-items:center;text-align:center;padding:6px 0}
+.auth-done .big-ic{font-size:44px}
+.btn.big.link{display:inline-flex;align-items:center;text-decoration:none}
 </style>
 
 <div class="app">
@@ -768,7 +804,7 @@ var SEED_NEWS=[];
 var SOURCES=[['Variety','https://variety.com'],['Deadline','https://deadline.com'],['The Hollywood Reporter','https://www.hollywoodreporter.com'],['IMDb News','https://www.imdb.com/news/'],['Screen Daily','https://www.screendaily.com']];
 var SEED_COLS=[]; // No preloaded questions or collections; admins create all quiz content.
 
-var ADMIN={u:'admin',p:'admin123'};
+var ADMIN={u:'admin'};
 var SWATCH=['#7657F6','#F0646A','#12A99A','#2878E8','#E39A2F','#D94F9D','#253B70'];
 var DEFAULT_ACCENT='#7657F6';
 
@@ -801,6 +837,7 @@ var SUPPORT_USER='KinoQuizofficial_bot';
 function t(k){var d=I18N[S.lang];return d&&d[k]!=null?d[k]:(I18N.en[k]!=null?I18N.en[k]:k)}
 function L(uz,ru,en){return S.lang==='uz'?uz:S.lang==='ru'?ru:en}
 function isAdmin(){return S.session&&S.session.role==='admin'}
+function isOwner(){return !!(S.session&&S.session.rank==='owner')}
 function kqFail(e){console.warn(e);toast(e&&e.code==='permission-denied'?L('Bu amal uchun ruxsat yo‘q.','Нет прав для этого действия.','You do not have permission for that.'):L('Serverga saqlab bo‘lmadi.','Не удалось сохранить на сервере.','Could not sync with the server.'))}
 function kqPush(k,v){
  var api=kq();if(!api)return;
@@ -856,7 +893,8 @@ window.kqApp={
   kqRefresh();
  },
  onTgLink:function(d){var was=!!S.tg;S.tg=d;if(d){S.tgCode=null;if(!was&&S.tgWaiting)toast(L('Telegram ulandi ✅','Telegram подключён ✅','Telegram connected ✅'));S.tgWaiting=false}kqRefresh()},
- onError:function(e){kqFail(e)}
+ onError:function(e){kqFail(e)},
+ onNotice:function(c){toast(c==='owner-claimed'?L('Egasi hisobi xavfsizlik uchun tiklandi. “Parolni unutdingizmi?” orqali emailga vaqtinchalik parol oling.','Аккаунт владельца сброшен в целях безопасности. Нажмите «Забыли пароль?» и получите временный пароль на email.','The owner account was reset for security. Press “Forgot password?” and get a temporary password by e-mail.'):L('Vaqtinchalik parol muddati tugadi. “Parolni unutdingizmi?” orqali yangisini oling.','Срок временного пароля истёк. Запросите новый через «Забыли пароль?».','Your temporary password expired. Request a new one with “Forgot password?”.'))}
 };
 function me(){return S.session?S.session.name:'guest'}
 function fmtDate(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString(LOCALE[S.lang],{day:'2-digit',month:'short',year:'numeric'})}catch(e){return iso}}
@@ -1135,16 +1173,35 @@ function playView(){
 /* ---------- login modal ---------- */
 function openLogin(){S.auth={mode:S.auth.mode||'signin'};renderModal()}
 function closeModal(force){if(S.forcePw&&force!==true)return;$('#modal').hidden=true;$('#modal').innerHTML=''}
+function authField(id,type,ac,label,ph,icon,hint,extra){
+ return '<label class="fld"><span>'+esc(label)+'</span><span class="in"><i class="ic" aria-hidden="true">'+icon+'</i><input type="'+type+'" id="'+id+'" autocomplete="'+ac+'" placeholder="'+esc(ph||'')+'" required'+(extra||'')+'></span>'+(hint?'<small>'+esc(hint)+'</small>':'')+'</label>';
+}
+function authShell(icon,title,sub,body,closable){
+ return '<div class="overlay" data-a="overlay"><div class="dlg auth" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="auth-hero">'+(closable===false?'':'<button class="btn sm auth-x" data-a="closemodal" aria-label="Close">✕</button>')+'<div class="auth-logo" aria-hidden="true">'+icon+'</div><h2>'+esc(title)+'</h2><p class="muted">'+esc(sub)+'</p></div><div class="auth-body">'+body+'</div></div></div>';
+}
 function renderModal(){
  if(S.forcePw){renderForcePwModal();return}
  if(S.auth.mode==='forgot'&&FB_ON){renderForgotModal();return}
  var a=S.auth,m=$('#modal');m.hidden=false;var up=a.mode==='signup';
  var modeToggle='<div class="auth-toggle"><button class="btn sm" data-a="authmode" data-v="signin" aria-pressed="'+(!up)+'">'+esc(t('signin'))+'</button><button class="btn sm" data-a="authmode" data-v="signup" aria-pressed="'+up+'">'+esc(t('signup'))+'</button></div>';
- var body='<form class="form" data-form="'+(up?'signup':'login')+'"><label>Email<input type="email" id="vu" autocomplete="email" required></label>'+(up&&FB_ON?'<label>'+esc(t('username'))+'<input type="text" id="vn" autocomplete="username" required></label>':'')+'<label>'+esc(t('password'))+'<input type="password" id="vp" autocomplete="'+(up?'new-password':'current-password')+'" required minlength="'+(FB_ON?6:4)+'"></label><p class="err" id="autherr"></p><button class="btn primary" type="submit">'+esc(up?t('signup'):t('signin'))+'</button></form>';
- var recovery=!up?'<div class="auth-links"><button class="text-link" data-a="forgotpassword">'+L('Parol yoki loginni unutdingizmi?','Забыли пароль или логин?','Forgot your password or login?')+'</button></div>':'';
- m.innerHTML='<div class="overlay" data-a="overlay"><div class="dlg" role="dialog" aria-modal="true" aria-label="'+esc(t('login'))+'"><div class="row between"><h2>'+esc(t('login'))+'</h2><button class="btn sm" data-a="closemodal" aria-label="Close">✕</button></div>'+modeToggle+body+((up&&FB_ON)?'<p class="muted small-note">'+esc(L('Maslahat: ro‘yxatdan o‘tgach Profil → Telegram orqali botni ulang — parolni tiklash osonlashadi.','Совет: после регистрации подключите бота в Профиль → Telegram — так проще восстановить пароль.','Tip: after signing up, connect the bot in Profile → Telegram so you can recover your password easily.'))+'</p>':'')+recovery+'</div></div>';
+ var fields;
+ if(up&&FB_ON){
+  fields=authField('vu','email','email','Email','name@example.com','✉')+
+   authField('vn','text','username',L('Login (nom)','Логин (имя)','Username'),L('masalan: kino_fan','например: kino_fan','e.g. kino_fan'),'👤',L('3–24 belgi: harf, raqam, . _ -','3–24 символа: буквы, цифры, . _ -','3–24 characters: letters, numbers, . _ -'),' maxlength="24"');
+ }else{
+  fields=authField('vu','text','username',FB_ON?L('Email yoki login','Email или логин','Email or username'):t('username'),FB_ON?L('email yoki login','email или логин','email or username'):'','✉',FB_ON?L('Ikkalasidan biri bilan kirishingiz mumkin','Можно войти по email или по логину','You can sign in with either one'):'');
+ }
+ var pwl=L('Parol','Пароль','Password');
+ var pwField='<label class="fld"><span>'+esc(pwl)+'</span><span class="in"><i class="ic" aria-hidden="true">🔒</i><input type="password" id="vp" autocomplete="'+(up?'new-password':'current-password')+'" placeholder="'+(up?esc(L('kamida 6 belgi','минимум 6 символов','at least 6 characters')):'••••••••')+'" required minlength="'+(up?(FB_ON?6:4):1)+'"><button type="button" class="eye" data-a="togglepw" aria-label="'+esc(L('Parolni ko‘rsatish','Показать пароль','Show password'))+'" title="'+esc(L('Parolni ko‘rsatish','Показать пароль','Show password'))+'">👁</button></span></label>';
+ var forgot=(!up&&FB_ON)?'<div class="auth-row"><button type="button" class="text-link" data-a="forgotpassword">'+esc(L('Parolni unutdingizmi?','Забыли пароль?','Forgot password?'))+'</button></div>':'';
+ var form='<form class="form" data-form="'+(up?'signup':'login')+'" autocomplete="on">'+fields+pwField+forgot+'<p class="auth-alert" id="autherr" role="alert"></p><p class="auth-info" id="authinfo" role="status"></p><button class="btn primary big" type="submit"><span class="lbl">'+esc(up?t('signup'):t('signin'))+'</span></button></form>';
+ var tip=(up&&FB_ON)?'<p class="auth-tip">'+esc(L('Maslahat: ro‘yxatdan o‘tgach Profil → Telegram orqali botni ulang — parolni tiklash osonlashadi.','Совет: после регистрации подключите бота в Профиль → Telegram — так проще восстановить пароль.','Tip: after signing up, connect the bot in Profile → Telegram to make password recovery easy.'))+'</p>':'';
+ var title=up?L('Hisob yaratish','Создать аккаунт','Create your account'):L('Xush kelibsiz','С возвращением','Welcome back');
+ var sub=up?L('Bepul · 20 soniya ichida','Бесплатно · займёт 20 секунд','Free · takes about 20 seconds'):(FB_ON?L('Email yoki login bilan kiring','Войдите по email или логину','Sign in with your email or username'):t('login'));
+ m.innerHTML=authShell('🎬',title,sub,modeToggle+form+tip);
  var f=m.querySelector('input');if(f)f.focus();
 }
+function setInfo(m){var e=$('#authinfo');if(e)e.textContent=m||''}
 function hashPw(s){
  try{return crypto.subtle.digest('SHA-256',new TextEncoder().encode('kq:'+s)).then(function(b){return Array.prototype.map.call(new Uint8Array(b),function(x){return ('0'+x.toString(16)).slice(-2)}).join('')})}
  catch(e){return Promise.resolve('p:'+s)}
@@ -1192,7 +1249,7 @@ function myOrdersList(){
  return S.orders.filter(function(o){return FB_ON?(!uid||o.uid===uid):true}).slice().sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0)}).slice(0,8);
 }
 function railProfile(){
- var name=S.session?dispName():L('Mehmon','Гость','Guest'),sub=S.session?'@'+S.session.name+(isAdmin()?' · admin':''):L('Kirish uchun bosing','Нажмите, чтобы войти','Tap to sign in');
+ var name=S.session?dispName():L('Mehmon','Гость','Guest'),sub=S.session?'@'+S.session.name+(isOwner()?' · owner':isAdmin()?' · admin':''):L('Kirish uchun bosing','Нажмите, чтобы войти','Tap to sign in');
  return '<button class="profile-card" data-a="go" data-v="profile" title="'+esc(t('nav_profile'))+'"'+(S.view==='profile'&&!S.q?' aria-current="page"':'')+'>'+avatarHtml(46)+'<span class="pc-text"><b>'+esc(name)+'</b><small>'+esc(sub)+'</small></span><span class="pc-go" aria-hidden="true">›</span></button>';
 }
 
@@ -1215,7 +1272,7 @@ function profHero(){
  ];
  return '<section class="card prof-hero"><div class="prof-cover" aria-hidden="true"><i></i><i></i><i></i></div>'+
   '<div class="prof-head"><div class="prof-avatar">'+avatarHtml(112,'big')+'<button class="prof-cam" data-a="pickavatar" aria-label="'+esc(L('Rasmni almashtirish','Сменить фото','Change photo'))+'" title="'+esc(L('Rasmni almashtirish','Сменить фото','Change photo'))+'">📷</button><input type="file" id="avatarfile" accept="image/*" hidden></div>'+
-  '<div class="prof-id"><h1>'+esc(dispName())+'</h1><p class="muted">@'+esc(S.session.name)+' · <span class="badge '+(isAdmin()?'paid':'free')+'">'+(isAdmin()?'Admin':L('A’zo','Участник','Member'))+'</span></p></div></div>'+
+  '<div class="prof-id"><h1>'+esc(dispName())+'</h1><p class="muted">@'+esc(S.session.name)+' · <span class="badge '+(isAdmin()?'paid':'free')+'">'+(isOwner()?L('Egasi','Владелец','Owner'):isAdmin()?'Admin':L('A’zo','Участник','Member'))+'</span></p></div></div>'+
   (p.avatar?'<button class="text-link prof-rmphoto" data-a="clearavatar">'+esc(L('Rasmni o‘chirish','Удалить фото','Remove photo'))+'</button>':'')+
   '<p class="prof-bio">'+(p.bio?esc(p.bio):'<span class="muted">'+esc(L('O‘zingiz haqingizda yozing — sevimli kino, janr, ijtimoiy tarmoqlar.','Расскажите о себе — любимое кино, жанры, соцсети.','Tell people about yourself — favourite film, genres, socials.'))+'</span>')+'</p>'+
   (chips?'<div class="prof-chips">'+chips+'</div>':'')+(links?'<div class="prof-links">'+links+'</div>':'')+
@@ -1276,13 +1333,23 @@ function profileView(){
 
 /* ----- password-recovery dialogs ----- */
 function renderForgotModal(){
- var m=$('#modal'),handle=supportHandle(S.bot||SUPPORT_USER);m.hidden=false;
- m.innerHTML='<div class="overlay" data-a="overlay"><div class="dlg" role="dialog" aria-modal="true" aria-label="'+esc(L('Parolni tiklash','Восстановление','Recover access'))+'"><div class="row between"><h2>'+esc(L('Parol yoki loginni unutdingizmi?','Забыли пароль или логин?','Forgot password or login?'))+'</h2><button class="btn sm" data-a="closemodal" aria-label="Close">✕</button></div>'+
-  '<ol class="steps"><li>'+esc(L('Pastdagi tugmani bosing — Telegramda bizning bot ochiladi.','Нажмите кнопку ниже — откроется наш бот в Telegram.','Tap the button — our bot opens in Telegram.'))+'</li><li>'+esc(L('Start tugmasini bosing. Bot loginingiz va vaqtinchalik parolni yuboradi.','Нажмите Start. Бот пришлёт ваш логин и временный пароль.','Press Start. The bot sends your login and a temporary password.'))+'</li><li>'+esc(L('Shu ma’lumotlar bilan kiring — KinoQuiz yangi parol o‘rnatishni so‘raydi.','Войдите с ними — KinoQuiz попросит придумать новый пароль.','Sign in with them — KinoQuiz will ask you to choose a new password.'))+'</li></ol>'+
-  '<a class="btn primary" href="https://t.me/'+esc(handle)+'?start=forgot" target="_blank" rel="noopener noreferrer">✈️ '+esc(t('open_bot'))+'</a>'+
-  '<p class="muted small-note">'+esc(L('Bot sizni faqat Profil → Telegram orqali oldindan ulagan bo‘lsangiz taniydi. Aks holda so‘rovingiz jamoamizga yuboriladi.','Бот узнаёт вас, только если вы заранее подключили Telegram в Профиле. Иначе запрос уйдёт нашей команде.','The bot recognises you only if you connected Telegram in Profile beforehand. Otherwise your request goes to our team.'))+'</p>'+
-  '<form class="form" data-form="resetemail"><label>'+esc(L('Yoki email orqali tiklash','Или восстановить по email','Or reset by email'))+'<input type="email" id="rse" autocomplete="email" required></label><p class="err" id="autherr"></p><button class="btn" type="submit">'+esc(L('Havola yuborish','Отправить ссылку','Send reset link'))+'</button></form>'+
-  '<button class="text-link" data-a="authmode" data-v="signin">‹ '+esc(L('Kirishga qaytish','Назад ко входу','Back to sign in'))+'</button></div></div>';
+ var m=$('#modal'),handle=supportHandle(S.bot||SUPPORT_USER),a=S.auth;m.hidden=false;
+ if(S.mailOn===undefined&&kq()){S.mailOn=null;kq().status().then(function(r){S.mailOn=r?!!r.mail:true;if(S.auth.mode==='forgot'&&!S.auth.sent)renderForgotModal()})}
+ var back='<button class="text-link" data-a="authmode" data-v="signin" style="justify-self:center">‹ '+esc(L('Kirishga qaytish','Назад ко входу','Back to sign in'))+'</button>';
+ if(a.sent){
+  m.innerHTML=authShell('📬',L('Emailingizni tekshiring','Проверьте почту','Check your inbox'),L('Vaqtinchalik parol yuborildi','Временный пароль отправлен','Temporary password sent'),
+   '<div class="auth-done"><p>'+esc(L('Agar','Если для','If an account exists for'))+' <b>'+esc(a.sent)+'</b> '+esc(L('uchun hisob mavjud bo‘lsa, ro‘yxatdagi emailga vaqtinchalik parol yubordik.','существует аккаунт, мы отправили временный пароль на его email.','we sent a temporary password to its e-mail.'))+'</p><p class="muted small-note">'+esc(L('Spam papkasini ham tekshiring. Shu parol bilan kiring — KinoQuiz darhol yangi parol o‘rnatishni so‘raydi. Parol 24 soat amal qiladi.','Проверьте и папку «Спам». Войдите с этим паролем — KinoQuiz сразу попросит задать новый. Пароль действует 24 часа.','Check Spam too. Sign in with it — KinoQuiz asks you to set a new password right away. It works for 24 hours.'))+'</p><button class="btn primary big" data-a="authmode" data-v="signin">'+esc(L('Kirish','Войти','Sign in'))+'</button></div>');
+  return;
+ }
+ var mailOff=S.mailOn===false;
+ var emailCard='<div class="opt-card"><h3><i>📧</i>'+esc(L('Email orqali','По email','By e-mail'))+'</h3><p class="muted">'+esc(L('Vaqtinchalik parolni emailingizga yuboramiz.','Мы отправим временный пароль на ваш email.','We e-mail you a temporary password.'))+'</p>'+
+  (mailOff?'<p class="auth-alert" style="display:block">'+esc(L('Email xizmati hali ulanmagan — Telegram botdan foydalaning.','Отправка email ещё не подключена — используйте Telegram-бота.','E-mail sending is not connected yet — use the Telegram bot.'))+'</p>':'')+
+  '<form class="form" data-form="forgotmail">'+authField('fgm','text','username',L('Email yoki login','Email или логин','Email or username'),L('email yoki login','email или логин','email or username'),'✉')+'<p class="auth-alert" id="autherr" role="alert"></p><p class="auth-info" id="authinfo" role="status"></p><button class="btn primary big" type="submit"'+(mailOff?' disabled':'')+'><span class="lbl">'+esc(L('Vaqtinchalik parol yuborish','Отправить временный пароль','Send temporary password'))+'</span></button></form></div>';
+ var botCard='<div class="opt-card"><h3><i>✈️</i>'+esc(L('Telegram bot orqali','Через Telegram-бота','By Telegram bot'))+'</h3>'+
+  '<ol class="steps"><li>'+esc(L('Botni oching va Start bosing.','Откройте бота и нажмите Start.','Open the bot and press Start.'))+'</li><li>'+esc(L('Bot so‘raydi — hisobingiz emailini yuboring.','Бот спросит — отправьте email аккаунта.','The bot asks — send your account e-mail.'))+'</li><li>'+esc(L('Botga shu emailga kelgan 6 xonali kodni yozing — bot vaqtinchalik parolni beradi.','Введите боту 6-значный код из письма — бот выдаст временный пароль.','Type the 6-digit code from that e-mail into the bot — it gives you a temporary password.'))+'</li></ol>'+
+  '<a class="btn big link" href="https://t.me/'+esc(handle)+'?start=forgot" target="_blank" rel="noopener noreferrer" style="justify-content:center">✈️ '+esc(t('open_bot'))+'</a></div>';
+ m.innerHTML=authShell('🔑',L('Parolni tiklash','Восстановление доступа','Recover your access'),L('Vaqtinchalik parolni olish usulini tanlang','Выберите, как получить временный пароль','Choose how to get a temporary password'),emailCard+'<div class="or-sep">'+esc(L('yoki','или','or'))+'</div>'+botCard+back);
+ var f=m.querySelector('input');if(f&&!mailOff)f.focus();
 }
 function renderForcePwModal(){
  var m=$('#modal');m.hidden=false;
@@ -1328,7 +1395,8 @@ document.addEventListener('click',function(e){
   case 'closemodal':closeModal();break;
   case 'rmadmin':{var ar=kq();if(ar&&confirm(L('Adminni o‘chirishni tasdiqlaysizmi?','Удалить администратора?','Remove this admin?')))ar.removeAdmin(id).then(function(){S.admins=undefined;render()},function(er){toast(er.message)});break}
   
-  case 'authmode':S.auth.mode=v;renderModal();break;
+  case 'togglepw':{var pin=el.parentNode.querySelector('input');if(pin)pin.type=pin.type==='password'?'text':'password';break}
+  case 'authmode':S.auth.mode=v;S.auth.sent=null;renderModal();break;
   case 'logout':S.forcePw=false;lastLoginPw='';closeModal(true);S.session=null;sv('session',null,true);S.play=null;if(kq())kq().signOut();render();break;
   case 'nfilter':S.filter=v;renderMain();break;
   case 'delnews':S.news=S.news.filter(function(n){return n.id!==id});sv('news',S.news);render();break;
@@ -1369,24 +1437,37 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()
 document.addEventListener('submit',async function(e){
  var f=e.target;var k=f.dataset.form;if(!k)return;e.preventDefault();
  var fd=new FormData(f);var g=function(n){return String(fd.get(n)||'').trim()};
- if(k==='resetemail'){var ak=kq();if(!ak)return;ak.resetEmail($('#rse').value.trim()).then(function(){setErrText(L('Agar bu email ro‘yxatda bo‘lsa, havola yuborildi.','Если email зарегистрирован, ссылка отправлена.','If that email has an account, a reset link was sent.'))},function(){setErrText(L('Yuborib bo‘lmadi.','Не удалось отправить.','Could not send.'))});return}
-  if(k==='addadmin'){var aa=kq();if(!aa)return;aa.addAdmin(g('email')).then(function(r){var how={telegram:L('Telegram orqali yuborildi','Отправлено в Telegram','Sent via Telegram'),email:L('Email orqali yuborildi','Отправлено по email','Sent by email')}[r.sent];if(how)toast(how+' ✓');else window.prompt(L('Bot/email yo‘q. Vaqtinchalik parolni bir marta nusxalang va shaxsga bering:','Нет бота/email. Скопируйте временный пароль один раз и передайте:','No bot/email available. Copy this temporary password once and give it to the person:'),r.tempPassword);f.reset();S.admins=undefined;render()},function(er){toast(er.message||'Error')});return}
+ if(k==='forgotmail'){
+ var ak=kq();if(!ak)return;var idv=(($('#fgm')||{}).value||'').trim();if(!idv)return;
+ var fb=f.querySelector('button[type=submit]');if(fb)fb.disabled=true;setErrText('');setInfo(L('Yuborilmoqda…','Отправляем…','Sending…'));
+ ak.forgot(idv).then(function(){S.auth.sent=idv;renderForgotModal()},function(er){
+  if(fb)fb.disabled=false;setInfo('');var c=er&&er.code||'';
+  setErrText(c==='mail-off'?L('Email xizmati hali ulanmagan. Telegram botdan foydalaning.','Отправка email ещё не подключена. Используйте Telegram-бота.','E-mail sending is not connected yet. Use the Telegram bot.'):c==='mail-failed'?L('Emailni yuborib bo‘lmadi. Birozdan so‘ng qayta urining yoki botdan foydalaning.','Не удалось отправить email. Попробуйте позже или используйте бота.','Could not send the e-mail. Try again later or use the bot.'):c==='auth/too-many-requests'?L('Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.','Слишком много попыток. Попробуйте позже.','Too many attempts. Try again later.'):c==='server/timeout'?L('Server uyg‘onmoqda. 1 daqiqadan so‘ng qayta urining.','Сервер просыпается. Повторите через минуту.','The server is waking up. Try again in a minute.'):L('Yuborib bo‘lmadi.','Не удалось отправить.','Could not send.'));
+ });return}
+ if(k==='addadmin'){var aa=kq();if(!aa)return;aa.addAdmin(g('email')).then(function(r){var how={telegram:L('Telegram orqali yuborildi','Отправлено в Telegram','Sent via Telegram'),email:L('Email orqali yuborildi','Отправлено по email','Sent by email')}[r.sent];if(how)toast(how+' ✓');else window.prompt(L('Bot/email yo‘q. Vaqtinchalik parolni bir marta nusxalang va shaxsga bering:','Нет бота/email. Скопируйте временный пароль один раз и передайте:','No bot/email available. Copy this temporary password once and give it to the person:'),r.tempPassword);f.reset();S.admins=undefined;render()},function(er){toast(er.message||'Error')});return}
   if(k==='adminlogin'){
-  if($('#au').value.trim()===ADMIN.u&&$('#ap').value===ADMIN.p)loginOk(ADMIN.u,'admin');else setErr('login_err');
+  setErr('login_err');
  }else if(k==='login'||k==='signup'){
   var u=$('#vu').value.trim(),pw=$('#vp').value,un=(($('#vn')||{}).value||'').trim();if(!u||!pw||(FB_ON&&k==='signup'&&!un)){setErr('fill');return}
   if(FB_ON){
-   var api=kq();
-   if(!api){setErrText(L('Server ulanmoqda… bir necha soniyadan so‘ng qayta urinib ko‘ring.','Подключение к серверу… попробуйте через несколько секунд.','Connecting to the server… try again in a few seconds.'));return}
-   if(!/^\S+@\S+\.\S+$/.test(u)){setErrText(L('To‘g‘ri email kiriting.','Введите корректный email.','Enter a valid email address.'));return}
-   if(k==='signup'&&!/^[A-Za-z0-9._-]{3,24}$/.test(un)){setErrText(L('Login 3–24 belgi: lotin harflari, raqamlar, . _ -','Логин 3–24 символа: латиница, цифры, . _ -','Username: 3–24 characters, letters, numbers, . _ -'));return}
-   if(pw.length<6){setErrText(L('Parol kamida 6 belgidan iborat bo‘lsin.','Пароль — минимум 6 символов.','Password must be at least 6 characters.'));return}
-   var map={'auth/invalid-credential':'login_err','auth/invalid-login-credentials':'login_err','auth/wrong-password':'login_err','auth/user-not-found':'login_err','auth/email-already-in-use':'email_exists','auth/username-taken':'exists'};
-   lastLoginPw=pw;
-   (k==='signup'?api.signUp(u,un,pw):api.signIn(u,pw)).then(function(){closeModal();if(k==='signup'){go('profile');toast(L('Xush kelibsiz! Profilni to‘ldiring va Telegramni ulang.','Добро пожаловать! Заполните профиль и подключите Telegram.','Welcome! Fill in your profile and connect Telegram.'))}},function(err){var c=err&&err.code||'';if(map[c])setErr(map[c]);else setErrText(c==='auth/too-many-requests'?L('Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.','Слишком много попыток. Попробуйте позже.','Too many attempts. Try again later.'):c==='auth/network-request-failed'?L('Internet aloqasi yo‘q.','Нет подключения к сети.','Network error.'):(c||'Error'))});
-   return;
+  var api=kq();
+  if(!api){setErrText(L('Server ulanmoqda… bir necha soniyadan so‘ng qayta urinib ko‘ring.','Подключение к серверу… попробуйте через несколько секунд.','Connecting to the server… try again in a few seconds.'));return}
+  var emailRe=/^\S+@\S+\.\S+$/;
+  if((k==='signup'||u.indexOf('@')>=0)&&!emailRe.test(u)){setErrText(L('To‘g‘ri email kiriting.','Введите корректный email.','Enter a valid email address.'));return}
+  if(k==='signup'&&!/^[A-Za-z0-9._-]{3,24}$/.test(un)){setErrText(L('Login 3–24 belgi: lotin harflari, raqamlar, . _ -','Логин 3–24 символа: латиница, цифры, . _ -','Username: 3–24 characters, letters, numbers, . _ -'));return}
+  if(k==='signup'&&pw.length<6){setErrText(L('Parol kamida 6 belgidan iborat bo‘lsin.','Пароль — минимум 6 символов.','Password must be at least 6 characters.'));return}
+  var map={'auth/invalid-credential':'login_err','auth/invalid-login-credentials':'login_err','auth/wrong-password':'login_err','auth/user-not-found':'login_err','auth/email-already-in-use':'email_exists','auth/username-taken':'exists'};
+  var sub=f.querySelector('button[type=submit]'),lbl=sub&&sub.querySelector('.lbl'),lbl0=lbl?lbl.textContent:'';
+  var busy=function(on){if(sub){sub.disabled=on;if(lbl)lbl.textContent=on?'…':lbl0}};
+  setErrText('');setInfo('');busy(true);lastLoginPw=pw;
+  var slow=function(){setInfo(L('Server uyg‘onmoqda, bir daqiqagacha kuting…','Сервер просыпается, подождите до минуты…','Waking up the server, this can take up to a minute…'))};
+  (k==='signup'?api.signUp(u,un,pw,slow):api.signIn(u,pw,slow)).then(function(){closeModal();if(k==='signup'){go('profile');toast(L('Xush kelibsiz! Profilni to‘ldiring va Telegramni ulang.','Добро пожаловать! Заполните профиль и подключите Telegram.','Welcome! Fill in your profile and connect Telegram.'))}},function(err){
+   busy(false);setInfo('');lastLoginPw='';var c=err&&err.code||'';
+   if(map[c])setErr(map[c]);
+   else setErrText(c==='auth/too-many-requests'?L('Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.','Слишком много попыток. Попробуйте позже.','Too many attempts. Try again later.'):c==='auth/network-request-failed'?L('Internet aloqasi yo‘q.','Нет подключения к сети.','Network error.'):c==='server/timeout'?L('Server javob bermadi. Bir daqiqadan so‘ng qayta urinib ko‘ring.','Сервер не ответил. Повторите через минуту.','The server did not answer. Try again in a minute.'):c==='auth/user-disabled'?L('Bu hisob bloklangan.','Этот аккаунт заблокирован.','This account is disabled.'):(c||'Error'));
+  });
+  return;
   }
-  if(k==='login'&&u===ADMIN.u&&pw===ADMIN.p){loginOk(ADMIN.u,'admin');return}
   var users=ld('users',[]);
   hashPw(pw).then(function(h){
    var found=users.filter(function(x){return x.u.toLowerCase()===u.toLowerCase()})[0];
